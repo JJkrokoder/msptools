@@ -1,0 +1,9 @@
+name: msptools
+channels:
+  - conda-forge
+
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - pytest
