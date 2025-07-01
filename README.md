@@ -22,10 +22,6 @@ To use the code in this repository, follow these steps:
 
 Basic usage example:
 
-```bash
-python msptools/process.py --input data.msp --output results/
-```
-
 ## License
 
 
