@@ -16,7 +16,7 @@ It includes modules for calculating time-average Optical Forces based on the equ
 
 .. math::
 
-   \mathbf{F} = \frac{\epsilon_m}{2}\real{\mathbf{p}\cdot \nabla \mathbf{E} }
+   \mathbf{F} = \frac{\epsilon_m}{2}\re{\mathbf{p}\cdot \nabla \mathbf{E}^* }
 
 
 .. toctree::
