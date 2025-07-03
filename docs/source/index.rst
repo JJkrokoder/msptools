@@ -9,6 +9,16 @@ msptools
 Welcome to the msptools documentation!
 ==================
 
+The msptools package provides python tools for Optical Forces calculations in
+particle systems where the Multiple Scattering Problem (MSP) is relevant.
+
+It includes modules for calculating time-average Optical Forces based on the equation:
+
+.. math::
+
+   \mathbf{F} = \frac{\epsilon_m}{2}\real{\mathbf{p}\cdot \nabla \mathbf{E} }
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Overview:
