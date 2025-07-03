@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-docs documentation
+msptools
 ==================
 
 Add your content using ``reStructuredText`` syntax. See the
