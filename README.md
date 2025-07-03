@@ -24,6 +24,9 @@ Basic usage example:
 
 ## License
 
+## Documentation
+
+Further documentation can be found in: https://msptools.readthedocs.io/en/latest/#msptools
 
 ## Contact
 
