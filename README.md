@@ -16,6 +16,7 @@ To use the code in this repository, follow these steps:
 
 1. Clone the repository: `git clone https://github.com/JJkrokoder/msptools/tree/main#` or `git clone git@github.com:JJkrokoder/msptools.git`
 2. Install the required dependencies in a new environment: `conda install -f environment.yml`
+3. Activate the virtual enironment: `conda activate msptools`
 3. Install the package in this environment: `pip install .`
 
 ## Usage
