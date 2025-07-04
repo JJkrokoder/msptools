@@ -6,8 +6,7 @@
 msptools
 ==================
 
-Welcome to the msptools documentation!
-==================
+**Welcome to the msptools documentation!**
 
 The msptools package provides python tools for Optical Forces calculations in
 particle systems where the Multiple Scattering Problem (MSP) is relevant.
@@ -17,6 +16,18 @@ It includes modules for calculating time-average Optical Forces based on the equ
 .. math::
 
    \mathbf{F} = \frac{\epsilon_m}{2}\Re(\mathbf{p}\cdot \nabla \mathbf{E}^* )
+
+Where:
+
+- :math:`\mathbf{F}` is the optical force,
+- :math:`\epsilon_m` is the medium permittivity,
+- :math:`\mathbf{p}` is the particle dipole moment,
+- :math:`\mathbf{E}` is the electric field.
+
+.. note::
+
+   This equation is also valid if vectors containing the dipole moments and electric field of 
+   each particle are used.
 
 
 .. toctree::
