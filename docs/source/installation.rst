@@ -6,7 +6,7 @@ To install msptools, follow these steps:
 **Clone the repository:**
 
 Use the link <https://github.com/JJkrokoder/msptools/tree/main> to the GitHub repository.
-Then clone it and navigate into the root directory using the following command:
+Then clone it and navigate into the root directory using the following commands:
 
 .. code-block:: console
 
@@ -17,7 +17,7 @@ or
 
 .. code-block:: console
 
-   $ git clone https://github.com/JJkrokoder/msptools.git
+   $ git clone git@github.com:JJkrokoder/msptools.git
    $ cd msptools
 
 **Create a virtual environment**
@@ -32,6 +32,7 @@ You can create and activate the virtual environment using the following commands
 
 **Install the package**
 To install the package in the activated virtual environment, run:
+
 .. code-block:: console
 
    $ pip install .

@@ -15,6 +15,9 @@ author = 'Joan'
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    'sphinx.ext.autodoc',
+    "sphinx.ext.autosummary",
 ]
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}

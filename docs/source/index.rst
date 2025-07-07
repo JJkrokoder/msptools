@@ -37,6 +37,7 @@ Where:
    introduction
    installation
    usage
+   API
 
 
 
