@@ -44,17 +44,15 @@ def pair_green_tensor(pos_i: np.ndarray, pos_j: np.ndarray, wave_number: float) 
     np.ndarray
         Pair Green's tensor of shape (dimension, dimension).
     """
-    
+    dimensions = pos_i.shape[0]
     R_vec = pos_i - pos_j
     r = np.linalg.norm(R_vec)
 
     g_0 = np.exp(1j * wave_number * r) / (4 * np.pi * r) * (1 + 1j/(wave_number * r) - 1/(wave_number * r)**2)
     g_1 = -np.exp(1j * wave_number * r) / (4 * np.pi * r) * (1 + 3j/(wave_number * r) - 3/(wave_number * r)**2)
 
-    R_cross = np.array([[R_vec[0]**2, R_vec[0]*R_vec[1], R_vec[0]*R_vec[2]],
-                        [R_vec[0]*R_vec[1], R_vec[1]**2, R_vec[1]*R_vec[2]],
-                        [R_vec[0]*R_vec[2], R_vec[1]*R_vec[2], R_vec[2]**2]])
-    
-    return g_0 * np.eye(3) + g_1 * R_cross
+    R_cross = R_vec[:, None] @ R_vec[None, :]
+
+    return g_0 * np.eye(dimensions) + g_1 * R_cross / r**2
 
 
