@@ -63,7 +63,8 @@ class Test_PairGreenTensor:
         assert np.allclose(rotation @ g_ij @ rotation.T, rotated_g_ij), "Pair Green's tensor is not rotationally invariant."
     
 
-    @pytest.mark.parametrize("norm_distance", [1e5, 1e10])
+
+    @pytest.mark.parametrize("norm_distance", [5, 1e2, 1e5])
     def test_farfield_consistency(self, norm_distance):
 
         distance = norm_distance / self.wave_number
@@ -77,8 +78,8 @@ class Test_PairGreenTensor:
         g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
         
         g0_ff = np.exp(1j * norm_distance) / (4 * np.pi * distance)
-        g1_ff = -np.exp(1j * norm_distance) / (4 * np.pi * distance)
-        g_ff = g0_ff * np.eye(3) + g1_ff * (R_vec[:, None] @ R_vec[None, :]) / distance**2
+        g1_ff = -np.exp(1j * norm_distance) / (4 * np.pi * distance) / distance**2
+        g_ff = g0_ff * np.eye(3) + g1_ff * (R_vec[:, None] @ R_vec[None, :]) 
 
         assert np.allclose(g_ij, g_ff, atol=2/(4*np.pi * distance * norm_distance)), "Pair Green's tensor does not match far-field approximation."
 

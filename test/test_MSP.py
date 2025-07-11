@@ -116,6 +116,10 @@ class Test_MSP_inverse:
     wave_number = 1.0
     green_tensor = (np.random.rand(num_particles, num_particles, dimension, dimension)\
         + 1j * np.random.rand(num_particles, num_particles, dimension, dimension)) * 1e-3
+    
+    def test_invertibility(self):
+        total_field = array_MSP_inverse(self.polarizability, self.external_field, self.wave_number, self.green_tensor)
+        assert total_field is not None, "Total field should not be None."
 
     def test_autoconsistency(self):
         total_field = array_MSP_inverse(self.polarizability, self.external_field, self.wave_number, self.green_tensor)
