@@ -1,7 +1,7 @@
 from typing import Iterable
 import numpy as np
 
-def calculate_forces(medium_permittivity: float, dipole_moments: np.ndarray, field_gradient: np.ndarray) -> np.ndarray:
+def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndarray, field_gradient: np.ndarray) -> np.ndarray:
     """
     Calculate the force on a set of dipoles in an electric field gradient.
 
