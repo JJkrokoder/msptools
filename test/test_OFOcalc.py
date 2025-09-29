@@ -26,7 +26,7 @@ class Test_calculateforces:
         dipole_moments = np.eye(num_particles * 7, dimensions)
         field_gradient = np.zeros((num_particles, dimensions, dimensions))
         with pytest.raises(ValueError):
-            calculate_forces(medium_permittivity, dipole_moments, field_gradient)
+            calculate_forces_eppgrad(medium_permittivity, dipole_moments, field_gradient)
 
     def test_force_propto_dipole_moment(self):
         """
@@ -40,7 +40,7 @@ class Test_calculateforces:
         dipole_moments = np.array([eigenvectors[:, 0]])
         field_gradient = field_gradient.reshape(1, 3, 3)
 
-        forces = calculate_forces(medium_permittivity, dipole_moments, field_gradient)
+        forces = calculate_forces_eppgrad(medium_permittivity, dipole_moments, field_gradient)
 
         cross_product = np.cross(dipole_moments[0], forces[0])
         assert np.allclose(cross_product, 0), "Force is not proportional to the dipole moment"
@@ -54,7 +54,7 @@ class Test_calculateforces:
         dipole_moments = np.random.rand(num_particles, 3)
         field_gradient = np.random.rand(num_particles, 3, 3) * 1j
 
-        forces = calculate_forces(medium_permittivity, dipole_moments, field_gradient)
+        forces = calculate_forces_eppgrad(medium_permittivity, dipole_moments, field_gradient)
 
         assert np.allclose(forces, 0), "Force should be zero for purely imaginary field gradient when dipole moments are real"
     
@@ -68,6 +68,6 @@ class Test_calculateforces:
         dipole_moments = np.array([[1, 0, 0] * num_particles]).reshape(num_particles, 3)
         field_gradient = np.array([[[0, 1, 0], [0, 0, 1], [0, 0, 0]]] * num_particles).reshape(num_particles, 3, 3)
 
-        forces = calculate_forces(medium_permittivity, dipole_moments, field_gradient)
+        forces = calculate_forces_eppgrad(medium_permittivity, dipole_moments, field_gradient)
 
         assert np.allclose(forces, 0), "Force should be zero when dipole moment and field gradient are perpendicular"
