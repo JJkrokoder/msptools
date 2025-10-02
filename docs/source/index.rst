@@ -52,7 +52,7 @@ If you encounter issues, please open an issue on GitHub or contact the maintaine
 
 .. toctree::
    :maxdepth: 2:
-   :caption: Basics:
+   :caption: Basics
 
    introduction
    installation
