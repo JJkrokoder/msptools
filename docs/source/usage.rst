@@ -4,15 +4,6 @@ Usage
 
 This page provides instructions and examples for using the ``msptools`` package.
 
-Basic Usage
-===========
-
-Import the package in your Python script:
-
-.. code-block:: python
-
-    import msptools
-
 Main Features
 =============
 
@@ -23,8 +14,35 @@ Main Features
     the external field and the particle properties, the Multiple Scattering Problem (MSP) is solved and the forces
     are computed.
 
+Basic Usage
+===========
+
+Import the package in your Python script:
+
+.. code-block:: python
+
+    import msptools
+
+Create Particle Types:
+
+.. code-block:: python
+
+    type1 = msptools.ParticleType(radius=50e-9, material='Si')
+
+Create a Particle System with some types:
+
+.. code-block:: python
+
+    system = msptools.ParticleSystem([type1])
+
+Add particles to the system:
+.. code-block:: python
+
+    system.add_particles(positions=[[0, 0, 0], [200e-9, 0, 0]], type=type1)
+    
+
 Example Workflow
-================
+----------------
 
 .. code-block:: python
 
