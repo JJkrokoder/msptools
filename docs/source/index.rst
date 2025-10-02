@@ -48,9 +48,7 @@ Support
 
 If you encounter issues, please open an issue on GitHub or contact the maintainers.
 
-Overview
----------
-
+**Documentation Overview**
 
 .. toctree::
    :maxdepth: 2:
