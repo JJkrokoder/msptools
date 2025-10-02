@@ -53,10 +53,33 @@ def array_MSP_iterative(polarizability : np.ndarray,
                           external_field : np.ndarray,
                           wave_number : float,
                           green_tensor : np.ndarray,
+                          num_iterations : int = 500,
                           tolerance : float = 1e-6) -> np.ndarray:
-
-    num_iterations = 500
     
+    """
+    Solve the MSP using an iterative method.
+
+    Parameters
+    ----------
+    polarizability :
+        Polarizability of the particles.
+    external_field :
+        External field on particles positions.
+    wave_number :
+        Wave number of the incident wave.
+    green_tensor :
+        Green's tensor for the system.
+    num_iterations : optional
+        Maximum number of iterations for the iterative method. Default is 500.
+    tolerance : optional
+        Convergence tolerance for the iterative method. Default is 1e-6.
+
+    Returns
+    -------
+    np.ndarray
+        The solution to the MSP.
+    """
+
     num_particles = external_field.shape[0]
     dimensions = external_field.shape[1]
 
@@ -75,6 +98,7 @@ def array_MSP_iterative(polarizability : np.ndarray,
             raise ValueError("The new field is significantly larger than the external field, indicating potential divergence in the iterative method.")
 
         if np.allclose(new_field, old_field, rtol=tolerance):
+            print(f"MSP iterative solution converged after {iteration + 1} iterations.")
             break
         old_field = new_field.copy()
 
@@ -112,9 +136,9 @@ def array_MSP_inverse(polarizability : np.ndarray,
 
         green_tensor_matrix = green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
         external_field_array = external_field.reshape(num_particles * dimensions, 1)
-        polarizability = polarizability_to_matrix(polarizability, num_particles, dimensions)
+        polarizability_matrix = polarizability_to_matrix(polarizability, num_particles, dimensions)
 
-        MSP_matrix = np.eye(len(external_field)) - wave_number**2 * green_tensor_matrix @ polarizability
+        MSP_matrix = np.eye(num_particles * dimensions) - wave_number**2 * green_tensor_matrix @ polarizability_matrix
         MSP_matrix_inv = np.linalg.inv(MSP_matrix)
         total_field = MSP_matrix_inv @ external_field_array
         return total_field.reshape(num_particles, dimensions)

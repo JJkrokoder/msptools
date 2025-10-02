@@ -32,8 +32,8 @@ def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndar
 
     for i in range(num_particles):
         particle_dipole = dipole_moments[i]
-        particle_gradient = field_gradient[i].conj()
-        DipFieldProd[i] = particle_gradient @ particle_dipole
+        particle_gradient = field_gradient[i]
+        DipFieldProd[i] = particle_gradient @ particle_dipole.conj()
     
     forces = (medium_permittivity / 2) * np.real(DipFieldProd)
 
