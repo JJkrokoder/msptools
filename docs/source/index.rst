@@ -33,7 +33,6 @@ Where:
    :maxdepth: 2:
    :caption: Overview
 
-   introduction
    installation
    usage
    API
