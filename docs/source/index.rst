@@ -29,6 +29,14 @@ Where:
    This equation is also valid if vectors containing the dipole moments and electric field of 
    each particle are used.
 
+.. toctree::
+   :maxdepth: 2:
+   :caption: Overview
+
+   introduction
+   installation
+   usage
+   API
 
 Main Features
 -------------
@@ -48,16 +56,8 @@ Support
 
 If you encounter issues, please open an issue on GitHub or contact the maintainers.
 
-**Documentation Overview**
 
-.. toctree::
-   :maxdepth: 2:
-   :caption: Basics
 
-   introduction
-   installation
-   usage
-   API
 
 
 
