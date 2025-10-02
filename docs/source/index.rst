@@ -31,7 +31,7 @@ Where:
 
 
 Main Features
-=============
+-------------
 
 - Optical Particle Types management: You can create types of particles with specific properties such as radius, material ...
 - Particle System management: You can create systems of particles, add or remove particles ...
@@ -41,24 +41,31 @@ the external field and the particle properties, the Multiple Scattering Problem 
 are computed.
 
 Repository
-=============
+----------
 
 For more examples and detailed code, please refer to the GitHub repository <https://github.com/JJkrokoder/msptools/tree/main>.
 
 Support
-=======
+--------
 
 If you encounter issues, please open an issue on GitHub or contact the maintainers.
 
 Overview
-========
+---------
 .. toctree::
    :maxdepth: 2:
+   :caption: Basics:
 
    introduction
    installation
    usage
    API
+
+.. toctree::
+   :maxdepth: 2:
+   :caption: ParticleType:
+
+   description
 
 
 
