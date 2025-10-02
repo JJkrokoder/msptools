@@ -16,8 +16,7 @@ Import the package in your Python script:
 Main Features
 =============
 
-- Optical Particle Types management: You can create types of particles with specific properties such 
-    as radius, material ...
+- Optical Particle Types management: You can create types of particles with specific properties such as radius, material ...
 - Particle System management: You can create systems of particles, add or remove particles ...
 - External Field customization: You can define the external field acting on the particle system.
 - Force Calculations: You can compute the optical forces acting on each particle in the system. Thus, given
@@ -38,12 +37,13 @@ Example Workflow
     # Create a particle system
     system = msptools.ParticleSystem([typeSi, typeAu])
     system.add_particles(positions=[0, 0, 0], type=typeSi)
-    system.add_particles(positions=[200e-9, 0, 0], type=typeAu)
+    system.add_particles(positions=[[200e-9, 0, 0],[100e-9, 100e-9, 0]], type=typeAu)
+
 
 Repository
 =============
 
-For more examples and detailed code, please refer to the `GitHub repository <https://github.com/JJkrokoder/msptools/tree/main>`.
+For more examples and detailed code, please refer to the GitHub repository <https://github.com/JJkrokoder/msptools/tree/main>.
 
 Support
 =======
