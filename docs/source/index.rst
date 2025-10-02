@@ -36,9 +36,7 @@ Main Features
 - Optical Particle Types management: You can create types of particles with specific properties such as radius, material ...
 - Particle System management: You can create systems of particles, add or remove particles ...
 - External Field customization: You can define the external field acting on the particle system.
-- Force Calculations: You can compute the optical forces acting on each particle in the system. Thus, given
-the external field and the particle properties, the Multiple Scattering Problem (MSP) is solved and the forces
-are computed.
+- Force Calculations: You can compute the optical forces acting on each particle in the system. Thus, given the external field and the particle properties, the Multiple Scattering Problem (MSP) is solved and the forces are computed.
 
 Repository
 ----------
@@ -52,6 +50,8 @@ If you encounter issues, please open an issue on GitHub or contact the maintaine
 
 Overview
 ---------
+
+
 .. toctree::
    :maxdepth: 2:
    :caption: Basics:
@@ -61,11 +61,7 @@ Overview
    usage
    API
 
-.. toctree::
-   :maxdepth: 2:
-   :caption: ParticleType:
 
-   description
 
 
 
