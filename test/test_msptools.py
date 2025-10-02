@@ -44,6 +44,36 @@ def test_add_1particle_formats():
         assert len(particles.positions) == 1, "There should be one particle in the system"
         particle_position = particles.positions[0]
         assert np.array_equal(particle_position, fpp_array), "The position of the first particle is incorrect"
+
+def test_add_1particle_type_assignment():
+    particles = msp.Particles()
+    sphere_type1 = msp.SphereType(radius=1.0, material="mat1")
+    sphere_type2 = msp.SphereType(radius=2.0, material="mat2")
+
+    # Add first particle with default type
+    particles.add_particles([0.0, 0.0, 0.0])
+    assert len(particles.types) == 1, "There should be one particle type in the system"
+    assert particles.type_assignments[0] == 0, "The type assignment of the first particle is incorrect"
+
+    # Add second particle with a new type
+    particles.add_particles([1.0, 0.0, 0.0], type=sphere_type1)
+    assert len(particles.types) == 2, "There should be two particle types in the system"
+    assert particles.type_assignments[1] == 1, "The type assignment of the second particle is incorrect"
+
+    # Add third particle with an existing type
+    particles.add_particles([[2.0, 0.0, 0.0]], type=sphere_type1)
+    assert len(particles.types) == 2, "There should still be two particle types in the system"
+    assert particles.type_assignments == [0, 1, 1], "The type assignment is incorrect"
+
+    # Add fourth particle with another new type
+    particles.add_particles([[3.0, 0.0, 0.0], [0.0, 2.0, 0.0]], type=sphere_type2)
+    assert len(particles.types) == 3, "There should be three particle types in the system"
+    assert particles.type_assignments[3] == 2, "The type assignment of the fourth particle is incorrect"
+    assert particles.type_assignments[4] == 2, "The type assignment of the fifth particle is incorrect"
+
+    particle_2_radius = particles.types[particles.type_assignments[2]].properties["radius"]
+
+    assert particle_2_radius == 1.0, "The radius of the type assigned to the third particle is incorrect"
         
 
 def test_add_2particles_formats():
