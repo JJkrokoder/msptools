@@ -16,7 +16,6 @@ class ParticleData:
             ParticleType instances for each particle.
             If a single ParticleType is provided, it is used for all particles.
             If a list of ParticleType instances is provided, the system is supposed to be multi-type.
-            If no types are provided, default spherical particles are used.
         """
 
         if types is None:

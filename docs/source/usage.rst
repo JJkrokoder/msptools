@@ -43,6 +43,6 @@ Example Workflow
     typeAu = msptools.ParticleType(radius=100e-9, material='Au')
 
     # Create a particle system
-    system = msptools.ParticleSystem([typeSi, typeAu])
-    system.add_particles(positions=[0, 0, 0], type=typeSi)
-    system.add_particles(positions=[[200e-9, 0, 0],[100e-9, 100e-9, 0]], type=typeAu)
+    particles = msptools.ParticleData([typeSi, typeAu])
+    particles.add_particles(positions=[0, 0, 0], type=typeSi)
+    particles.add_particles(positions=[[200e-9, 0, 0],[100e-9, 100e-9, 0]], type=typeAu)
