@@ -26,9 +26,10 @@ Create a Particle System with some types:
     system = msptools.ParticleSystem([type1])
 
 Add particles to the system:
+
 .. code-block:: python
 
-    system.add_particles(positions=[[0, 0, 0], [200e-9, 0, 0]], type=type1)
+    particles.add_particles(positions=[[0, 0, 0], [200e-9, 0, 0]], type=type1)
 
 
 Example Workflow
