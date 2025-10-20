@@ -2,12 +2,11 @@ import numpy as np
 from typing import Callable
 
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
-    """Select the polarizability computation method based on the material and excitation wavelength."""
-    
+    """Select the polarizability computation method based on the material and excitation wavelength."""    
 
-def dielectric_Drude(frequency: float, plasma_frequency: float, collision_frequency: float) -> complex:
+def permittivity_Drude(frequency: float, plasma_frequency: float, collision_frequency: float, epsilon_inf: float) -> complex:
     """
-    Calculate the dielectric constant using the Drude model.
+    Calculate the permittivity using the Drude model.
     
     Parameters
     ----------
@@ -17,13 +16,14 @@ def dielectric_Drude(frequency: float, plasma_frequency: float, collision_freque
         The plasma frequency of the material.
     collision_frequency : float
         The collision frequency of the electrons in the material.
+    epsilon_inf : float
+        The high-frequency dielectric constant of the material.
     
     Returns
     -------
     complex
         The dielectric constant of the material.
     """
-    epsilon_inf = 1.0  # High-frequency dielectric constant
     epsilon = epsilon_inf - (plasma_frequency**2) / (frequency**2 + 1j * frequency * collision_frequency)
     return epsilon
 
