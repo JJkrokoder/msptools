@@ -13,6 +13,7 @@ __all__ = [
     "polarizability_mod",
     "particle_types",
     "particles_mod",
+    "permittivity",
 ]
 
 class System:
