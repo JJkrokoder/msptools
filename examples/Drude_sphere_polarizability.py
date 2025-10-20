@@ -1,6 +1,7 @@
 import msptools as msp
 import numpy as np
 from scipy.constants import c, hbar, e
+import refractiveindex
 
 wavelength = 1000e-9
 frequency = c / wavelength * 2 * np.pi * hbar / e
@@ -10,7 +11,7 @@ collision_frequency = 0.05
 collision_wavelength = c * hbar / (collision_frequency * e) / (2 * np.pi)
 epsilon_inf = 9
 
-drude_epsilon = msp.polarizability_mod.permittivity_Drude(frequency=frequency,
+drude_epsilon = msp.permittivity.permittivity_Drude(frequency=frequency,
                                                           plasma_frequency=plasma_frequency,
                                                           collision_frequency=collision_frequency,
                                                           epsilon_inf=epsilon_inf)
@@ -31,7 +32,7 @@ print()
 
 wavelengths = np.linspace(500, 1100, 80)
 frequencies = c / (wavelengths * 1e-9) * 2 * np.pi * hbar / e
-permittivities = [msp.polarizability_mod.permittivity_Drude(frequency=freq,
+permittivities = [msp.permittivity.permittivity_Drude(frequency=freq,
                                                             plasma_frequency=plasma_frequency,
                                                             collision_frequency=collision_frequency,
                                                             epsilon_inf=epsilon_inf) for freq in frequencies]

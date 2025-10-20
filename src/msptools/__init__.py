@@ -4,6 +4,7 @@ from .dipole_moments import *
 from .polarizability_mod import *
 from .particle_types import *
 from .particles_mod import *
+from .permittivity import *
 from typing import List
 
 
