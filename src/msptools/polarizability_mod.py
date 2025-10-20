@@ -1,37 +1,54 @@
 import numpy as np
+from typing import Callable
 
+def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
+    """Select the polarizability computation method based on the material and excitation wavelength."""
+    
 
-def calculate_sphere_polarizability(radius: float, material: str) -> float:
+def dielectric_Drude(frequency: float, plasma_frequency: float, collision_frequency: float) -> complex:
+    """
+    Calculate the dielectric constant using the Drude model.
+    
+    Parameters
+    ----------
+    frequency : float
+        The frequency of the incident light.
+    plasma_frequency : float
+        The plasma frequency of the material.
+    collision_frequency : float
+        The collision frequency of the electrons in the material.
+    
+    Returns
+    -------
+    complex
+        The dielectric constant of the material.
+    """
+    epsilon_inf = 1.0  # High-frequency dielectric constant
+    epsilon = epsilon_inf - (plasma_frequency**2) / (frequency**2 + 1j * frequency * collision_frequency)
+    return epsilon
+
+def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float) -> float:
     """
     Calculate the polarizability of a spherical particle using the Clausius-Mossotti relation.
     
     Parameters
     ----------
-    radius : float
+    radius : 
         The radius of the spherical particle.
-    material : str
-        The material of the particle. Currently supports 'gold' and 'silver'.
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity :
+        The permittivity of the particle material.
+        
     
     Returns
     -------
     float
         The polarizability of the spherical particle.
     """
-    
-    # Placeholder dielectric constants for materials at a specific wavelength (in nm)
-    dielectric_constants = {
-        'gold': -11.0 + 1.2j,  # Example value at ~520 nm
-        'silver': -15.0 + 0.5j  # Example value at ~400 nm
-    }
-    
-    if material not in dielectric_constants:
-        raise ValueError(f"Material '{material}' not supported. Choose from {list(dielectric_constants.keys())}.")
-    
-    epsilon_particle = dielectric_constants[material]
-    epsilon_medium = 1.0  # Assuming vacuum or air
-    
-    polarizability = 4 * np.pi * (radius**3) * (epsilon_particle - epsilon_medium) / (epsilon_particle + 2 * epsilon_medium)
-    
+
+    polarizability = 4 * np.pi * (radius**3) * (particle_permittivity - medium_permittivity) / (particle_permittivity + 2 * medium_permittivity)
+
     return polarizability
 
 

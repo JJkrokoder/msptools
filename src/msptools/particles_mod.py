@@ -115,20 +115,15 @@ class ParticleData:
         self.positions = []
 
 
-    def _calculate_polarizabilities(self, frequency: float) -> None:
+    def _calculate_polarizabilities(self) -> None:
         """
-        Calculate the polarizabilities of all particles in the system at a given frequency.
-
-        Parameters
-        ----------
-        frequency :
-            The frequency at which to calculate the polarizabilities.
+        Calculate the polarizabilities of all particles in the system given that their types polarizabilities are known.
         """
 
         for particle in range(len(self.positions)):
             type_index = self.type_assignments[particle]
             particle_type = self.types[type_index]
-            polarizability = particle_type.polarizability
+            polarizability = particle_type.compute_polarizability()
             self.polarizabilities.append(polarizability)
 
 

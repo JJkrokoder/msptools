@@ -19,11 +19,11 @@ Create Particle Types:
 
     type1 = msptools.ParticleType(radius=50e-9, material='Si')
 
-Create a Particle System with some types:
+Create a Particles with some types:
 
 .. code-block:: python
 
-    system = msptools.ParticleSystem([type1])
+    particles = msptools.ParticleData([type1])
 
 Add particles to the system:
 
