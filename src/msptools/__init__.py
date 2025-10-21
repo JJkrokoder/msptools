@@ -35,7 +35,7 @@ class System:
     
     def add_particles(self,
                      positions: np.ndarray | List[float] | List[List[float]],
-                     particle_type: ParticleType | None) -> None:
+                     particle_type: ParticleType | None = None) -> None:
         """
         Add particles to the system at specified positions.
 
@@ -44,11 +44,13 @@ class System:
         positions :
             The position of the particles to add. This can be a 1D-three-element or 2D array-like.
         type :
-            The type of the particles to add.
+            The type of the particles to add. If not specified, and there is only one type in the system, that type will be used.
         """
 
         if particle_type is None and len(self.particle_types) > 1:
             raise ValueError("When adding particles to a multi-type system, the 'particle_type' parameter must be specified.")
+        else:
+            particle_type = self.particle_types[0]
 
         if particle_type is not None and particle_type not in self.particle_types:
             raise ValueError("The specified particle type is not part of the system's types.")
