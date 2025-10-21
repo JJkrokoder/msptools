@@ -1,77 +1,39 @@
-from .particle_types import ParticleType, SphereType
 from typing import List
 import numpy as np
 
 
-class ParticleData:
+class Particles:
     """Class representing a system of particles."""
 
-    def __init__(self, types: ParticleType | List[ParticleType]) -> None:
+    def __init__(self) -> None:
         """
-        Initialize a ParticleData object by specifying the types of particles in the system.
-
-        Parameters
-        ----------
-        types :
-            ParticleType instances for each particle.
-            If a single ParticleType is provided, it is used for all particles.
-            If a list of ParticleType instances is provided, the system is supposed to be multi-type.
+        Initialize a Particles object.
         """
-
-        if types is None:
-            raise ValueError("Particle type must be specified when adding particles.")
-        elif isinstance(types, list):
-            self.types = types
-        else:
-            self.types = [types]
 
         self.positions = []
-        self.type_assignments = []
         self.polarizabilities = []
 
 
     def add_particles(self,
-                     positions: np.ndarray | List[float] | List[List[float]],
-                     type: ParticleType | None = None) -> None:
+                     positions: List[List[float]],
+                     polarizabilities: complex | List[complex]) -> None:
         """
-        Add particles to the system at specified positions.
+        Add particles to the system at specified positions and with specified polarizabilities.
 
         Parameters
         ----------
         positions :
-            The position of the particles to add. This can be a 1D-three-element or 2D array-like.
-        type :
-            The type of the particles to add.
-
-        Notes
-        -----
-        The positions are stored as 1D numpy arrays.
+            The position of the particles to add.
+        polarizabilities :
+            The polarizabilities of the particles to add.
         """
 
-        if type is None:
-            if len(self.types) == 0:
-                raise ValueError("At least one particle type must be specified before adding particles.")
-            elif len(self.types) == 1:
-                type_index = 0
-            else:
-                raise ValueError("Particle type must be specified when adding particles to a multi-type system.")
-        else:
-            if type not in self.types:
-                self.types.append(type)
-                type_index = len(self.types) - 1
-            else:
-                type_index = self.types.index(type)
+        self.positions.extend(positions)
 
-        positions = np.array(positions)
-        if positions.ndim == 1 or (positions.ndim == 2 and positions.shape[0] == 1):
-            self.positions.append(positions) if positions.ndim == 1 else self.positions.append(positions[0])
-            self.type_assignments.append(type_index)
-        elif positions.ndim == 2 and positions.shape[0] > 1:
-            self.positions.extend(positions)
-            self.type_assignments.extend([type_index] * positions.shape[0])
+        if isinstance(polarizabilities, list):
+            self.polarizabilities.extend(polarizabilities)
         else:
-            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
-        
+            self.polarizabilities.extend([polarizabilities] * len(positions))
 
     def get_positions(self) -> np.ndarray:
         """

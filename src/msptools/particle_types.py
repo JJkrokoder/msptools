@@ -19,6 +19,8 @@ class SphereType(ParticleType):
         super().__init__(polarizability=polarizability)
         self.radius = radius
         self.material = material
-
-
+    
+    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
+        """PLACEHOLDER: Compute the polarizability of the spherical particle."""
+        return 1.0 + 0.0j
 

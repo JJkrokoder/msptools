@@ -1,10 +1,12 @@
 from dataclasses import Field
+import types
 from .OFO_calculations import *
 from .dipole_moments import *
 from .polarizability_mod import *
 from .particle_types import *
 from .particles_mod import *
 from .permittivity import *
+from .field_mod import Field
 from typing import List
 
 
@@ -20,20 +22,49 @@ __all__ = [
 class System:
     """Class representing a Optical_Forces physical system containing particles."""
 
-    def __init__(self, particledata : ParticleData, field: Field, medium_permittivity: float = 1.0) -> None:
+    def __init__(self, particle_types : ParticleType | List[ParticleType], field: Field, medium_permittivity: float = 1.0) -> None:
         """
-        Initialize a System object by specifying the particles and the field.
+        Initialize a System object by specifying the particle types, the field and the medium permittivity.
         """
-        self.particledata = particledata
+        if not isinstance(particle_types, list):
+            particle_types = [particle_types]
+        self.particle_types = particle_types
         self.field = field
         self.medium_permittivity = medium_permittivity
-
-        for type in self.particledata.types:
-            type.compute_polarizability(frequency=self.field.frequency, medium_permittivity=self.medium_permittivity)
-
+        self.particles = Particles()
     
+    def add_particles(self,
+                     positions: np.ndarray | List[float] | List[List[float]],
+                     particle_type: ParticleType | None) -> None:
+        """
+        Add particles to the system at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The position of the particles to add. This can be a 1D-three-element or 2D array-like.
+        type :
+            The type of the particles to add.
+        """
+
+        if particle_type is None and len(self.particle_types) > 1:
+            raise ValueError("When adding particles to a multi-type system, the 'particle_type' parameter must be specified.")
+
+        if particle_type is not None and particle_type not in self.particle_types:
+            raise ValueError("The specified particle type is not part of the system's types.")
+
+        positions = np.array(positions)
+        if positions.ndim == 1:
+            positions = [[pos] for pos in positions.flatten().tolist()]
+        elif positions.ndim == 2:
+            positions = positions.tolist() 
+        else:
+            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
+
+        polarizability = particle_type.compute_polarizability(self.field.frequency, self.medium_permittivity)
+        self.particles.add_particles(positions=positions, polarizabilities=polarizability)
 
 
 
-        
+
 
