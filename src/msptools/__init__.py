@@ -70,6 +70,32 @@ class System:
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
 
 
+class ForceCalculator:
+    """Class to compute optical forces on particles in a System."""
+    
+    def __init__(self, system: System) -> None:
+        """
+        Initialize a ForceCalculator object by specifying the System.
+        """
+        self.system = system
 
+    def compute_forces(self, positions : np.ndarray | List[float] | List[List[float]]) -> np.ndarray:
+        """
+        Compute the optical forces on particles at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The position of the particles to compute forces on. This can be a 1D-three-element or 2D array-like.
+
+        Returns
+        -------
+        np.ndarray
+            The computed optical forces on the particles.
+        """
+        positions = np.array(positions)
+
+        forces = np.copy(positions)
+        return forces
 
 

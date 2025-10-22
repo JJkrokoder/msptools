@@ -5,10 +5,42 @@ from .unit_calcs import *
 class Field:
     """Class representing an electromagnetic field."""
     
-    def __init__(self) -> None:
+    def __init__(self, **kwargs ) -> None:
         """
-        Initialize a Field object.
+        Initialize a Field object by specifying its frequency or wavelength.
+        
+        Parameters
+        ----------
+        frequency :
+            The frequency of the field.
+        frequency_unit :
+            The unit of the frequency.
+        wavelength :
+            The wavelength of the field.
+        wavelength_unit :
+            The unit of the wavelength.
         """
+        frequency = kwargs.get("frequency", None)
+        wavelength = kwargs.get("wavelength", None)
+        frequency_unit = kwargs.get("frequency_unit", None)
+        wavelength_unit = kwargs.get("wavelength_unit", None)
+
+        if frequency is None and wavelength is None:
+            raise ValueError("Either 'frequency' or 'wavelength' must be specified.")
+        elif frequency is not None and wavelength is not None:
+            raise ValueError("Only one of 'frequency' or 'wavelength' should be specified.")
+        elif frequency is not None:
+            if frequency_unit is None:
+                raise ValueError("'frequency' specified but 'frequency_unit' is None.")
+            else:
+                self.frequency = frequency_to_eV(frequency, frequency_unit)
+        else:
+            if wavelength_unit is None:
+                raise ValueError("'wavelength' specified but 'wavelength_unit' is None.")
+            else:  
+                wavelength_nm = wavelength_to_nm(wavelength, wavelength_unit)
+                self.frequency = nm_to_eV(wavelength_nm)
+        self.frequency = frequency
 
 class PlaneWaveField(Field):
     """Class representing a plane wave electromagnetic field."""
@@ -36,29 +68,6 @@ class PlaneWaveField(Field):
             The unit of the wavelength.
         """
 
-        super().__init__()
-        
-        frequency = kwargs.get("frequency", None)
-        wavelength = kwargs.get("wavelength", None)
-        frequency_unit = kwargs.get("frequency_unit", None)
-        wavelength_unit = kwargs.get("wavelength_unit", None)
-
-        if frequency is None and wavelength is None:
-            raise ValueError("Either 'frequency' or 'wavelength' must be specified.")
-        elif frequency is not None and wavelength is not None:
-            raise ValueError("Only one of 'frequency' or 'wavelength' should be specified.")
-        elif frequency is not None:
-            if frequency_unit is None:
-                raise ValueError("'frequency' specified but 'frequency_unit' is None.")
-            else:
-                self.frequency = frequency_to_eV(frequency, frequency_unit)
-        else:
-            if wavelength_unit is None:
-                raise ValueError("'wavelength' specified but 'wavelength_unit' is None.")
-            else:  
-                wavelength_nm = wavelength_to_nm(wavelength, wavelength_unit)
-                self.frequency = nm_to_eV(wavelength_nm)
-
-        self.frequency = frequency
+        super().__init__(**kwargs)
         self.amplitude = amplitude
         self.direction = direction
