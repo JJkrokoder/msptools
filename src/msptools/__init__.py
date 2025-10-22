@@ -6,7 +6,8 @@ from .polarizability_mod import *
 from .particle_types import *
 from .particles_mod import *
 from .permittivity import *
-from .field_mod import Field
+from .field_mod import *
+from .unit_calcs import *
 from typing import List
 
 
@@ -17,6 +18,8 @@ __all__ = [
     "particle_types",
     "particles_mod",
     "permittivity",
+    "field_mod",
+    "unit_calcs",
 ]
 
 class System:

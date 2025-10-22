@@ -6,7 +6,7 @@ class TestSystem:
     medium_permittivity = 1.0
     
     def test_initialize_system(self):
-        field = msp.Field(frequency=1.0)
+        field = msp.PlaneWaveField(direction=[0, 0, 1], frequency=1.0, frequency_unit="eV")
         type1 = msp.SphereType(radius=1.0, material="glass")
         system = msp.System(field=field, medium_permittivity=self.medium_permittivity, particle_types=type1)
         
@@ -16,7 +16,7 @@ class TestSystem:
         assert system.particle_types[0].radius == 1.0, "Particle type radius should be initialized to 1.0"
 
     def test_add_particles_single_type(self):
-        field = msp.Field(frequency=1.0)
+        field = msp.PlaneWaveField(direction=[0, 0, 1], frequency=1.0, frequency_unit="eV")
         type1 = msp.SphereType(radius=1.0, material="glass")
         system = msp.System(field=field, medium_permittivity=self.medium_permittivity, particle_types=[type1])
         

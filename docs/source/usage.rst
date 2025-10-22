@@ -47,12 +47,13 @@ Initialize Force Calculator:
 .. code-block:: python
 
     force_calculator = msptools.ForceCalculator(system)
-    
+
 Compute Optical Forces:
 
 .. code-block:: python
-    forces = force_calculator.compute_forces(system.get_positions())
 
+    forces = force_calculator.compute_forces(system.get_positions())
+ 
 Example Workflow
 ----------------
 
