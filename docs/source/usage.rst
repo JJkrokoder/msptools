@@ -20,6 +20,7 @@ Create Particle Types:
     type1 = msptools.ParticleType(radius=50e-9, material='Si')
 
 Create an External Field:
+
 .. code-block:: python
 
     ext_field = msptools.PlaneWave(
@@ -30,20 +31,25 @@ Create an External Field:
     )
 
 Initialize System:
+
 .. code-block:: python
 
     system = msptools.System(particle_types=[type1], field=ext_field, medium_permittivity=1.0)
 
 Add particles to the system:
+
 .. code-block:: python
 
     system.add_particles(positions=[[0, 0, 0], [200e-9, 0, 0]], particle_type=type1)
 
 Initialize Force Calculator:
+
 .. code-block:: python
 
     force_calculator = msptools.ForceCalculator(system)
+    
 Compute Optical Forces:
+
 .. code-block:: python
     forces = force_calculator.compute_forces(system.get_positions())
 
@@ -78,4 +84,4 @@ Example Workflow
 
     # Compute Optical Forces
     forces = force_calculator.compute_forces(system.get_positions())
-    
+
