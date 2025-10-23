@@ -34,7 +34,11 @@ Initialize System:
 
 .. code-block:: python
 
-    system = msptools.System(particle_types=[type1], field=ext_field, medium_permittivity=1.0)
+    system = msptools.System(particle_types=[type1],
+    field=ext_field,
+    medium_permittivity=1.0,
+    positions_unit='nm'
+    )
 
 Add particles to the system:
 
@@ -70,11 +74,16 @@ Example Workflow
         wavelength=532e-9,
         amplitude=1.0,
         polarization=[0, 0, 1],
-        wave_vector=[1, 0, 0]
+        wave_vector=[1, 0, 0],
+        wavelength_unit='nm'
     )
 
     # Initialize System
-    system = msptools.System(particle_types=[type1, type2], field=ext_field, medium_permittivity=1.0)
+    system = msptools.System(particle_types=[type1, type2],
+        field=ext_field,
+        positions_unit='nm',
+        medium_permittivity=1.0
+    )
 
     # Add particles to the system
     system.add_particles(positions=[[0, 0, 0], [200e-9, 0, 0]], particle_type=type1)
