@@ -27,7 +27,8 @@ Create an External Field:
     wavelength=532e-9,
     amplitude=1.0,
     polarization=[0, 0, 1],
-    wave_vector=[1, 0, 0]
+    wave_vector=[1, 0, 0],
+    wavelength_unit='nm'
     )
 
 Initialize System:
