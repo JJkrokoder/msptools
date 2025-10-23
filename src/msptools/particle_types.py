@@ -8,7 +8,7 @@ class ParticleType:
         if polarizability is not None:
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
-    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> None:
+    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
         """Compute the polarizability of the particle type at a given frequency."""
         raise NotImplementedError("This method should be implemented by subclasses.")
 

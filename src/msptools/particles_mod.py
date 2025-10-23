@@ -1,5 +1,6 @@
 from typing import List
 import numpy as np
+from .unit_calcs import get_multiplier_nanometers
 
 
 class Particles:
@@ -26,6 +27,8 @@ class Particles:
             The position of the particles to add.
         polarizabilities :
             The polarizabilities of the particles to add.
+        positions_unit :
+            The unit of the positions provided.
         """
 
         self.positions.extend(positions)

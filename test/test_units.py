@@ -26,3 +26,18 @@ def test_nm_to_eV():
     energy_ev = msp.nm_to_eV(wavelength_nm)
     expected_energy_ev = (h * c) / (wavelength_nm * 1e-9 * e)
     assert np.isclose(energy_ev, expected_energy_ev, atol=a_tolerance), f"Expected {expected_energy_ev}, got {energy_ev}"
+
+def test_eV_to_wavenumber_um():
+    frequency_eV = 2.0  # 2 eV
+    wavenumber_um = msp.frequency_to_wavenumber_um(frequency_eV)
+    expected_wavenumber_um = (frequency_eV * e) / (hbar * c) * 1e6
+    assert np.isclose(wavenumber_um, expected_wavenumber_um, atol=a_tolerance), f"Expected {expected_wavenumber_um}, got {wavenumber_um}"
+
+def test_get_multiplier_nanometers():
+    multiplier_km = msp.get_multiplier_nanometers("km")
+    expected_multiplier_km = 1e12  # 1 km = 1e12 nm
+    assert np.isclose(multiplier_km, expected_multiplier_km, atol=a_tolerance), f"Expected {expected_multiplier_km}, got {multiplier_km}"
+
+    multiplier_cm = msp.get_multiplier_nanometers("cm")
+    expected_multiplier_cm = 1e7  # 1 cm = 1e7 nm
+    assert np.isclose(multiplier_cm, expected_multiplier_cm, atol=a_tolerance), f"Expected {expected_multiplier_cm}, got {multiplier_cm}"

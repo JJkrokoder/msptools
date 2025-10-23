@@ -126,3 +126,36 @@ def nm_to_eV(wavelength_nm: float) -> float:
     wavelength_m = wavelength_nm * 1e-9
     frequency_eV = h * c / wavelength_m / e
     return frequency_eV
+
+
+def frequency_to_wavenumber_um(frequency_eV: float) -> float:
+    """
+    Convert frequency in electron volts / hbar (eV) to wavenumber in inverse micrometers (1/µm).
+    
+    Parameters:
+        frequency_eV:
+            Frequency value in electron volts / hbar (eV).
+
+    Returns:
+        Wavenumber in inverse micrometers (1/µm).
+    """
+    frequency_hz = frequency_eV * e / hbar
+    wavenumber_m = frequency_hz / c
+    wavenumber_um = wavenumber_m * 1e6
+    return wavenumber_um
+
+def get_multiplier_nanometers(unit: str) -> float:
+    """
+    Get the multiplier to convert a given unit to nanometers (nm).
+
+    Parameters:
+        unit:
+            The unit prefix to be converted to nanometers (nm).
+
+    Returns:
+        Multiplier to convert the given unit to nanometers (nm).
+    """
+    factor = multipliers.get(unit[:-1], 1)
+    if factor is None:
+        raise ValueError(f"Unsupported unit: {unit}")
+    return factor * 1e9

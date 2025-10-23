@@ -16,18 +16,6 @@ class Test_calculateforces:
     
     medium_permittivity = 2.5
 
-    @pytest.mark.parametrize("num_particles", [1, 2, 3, 10])
-    @pytest.mark.parametrize("dimensions", [1, 2, 3])
-    def test_error_raising(self, num_particles, dimensions):
-        """
-        Test that the function raises a ValueError when the field gradient shape is incorrect.
-        """
-        medium_permittivity = self.medium_permittivity
-        dipole_moments = np.eye(num_particles * 7, dimensions)
-        field_gradient = np.zeros((num_particles, dimensions, dimensions))
-        with pytest.raises(ValueError):
-            calculate_forces_eppgrad(medium_permittivity, dipole_moments, field_gradient)
-
     def test_force_propto_dipole_moment(self):
         """
         Test that the force is proportional to the dipole moment.

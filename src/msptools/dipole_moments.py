@@ -1,6 +1,8 @@
 import numpy as np
+from typing import List
 
-def calculate_dipole_moments_linear(polarizability, electric_field : np.ndarray) -> np.ndarray:
+def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex],
+                                    electric_field : np.ndarray) -> np.ndarray:
     
     dipole_moments = np.zeros_like(electric_field, dtype=complex)
  

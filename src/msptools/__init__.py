@@ -25,7 +25,7 @@ __all__ = [
 class System:
     """Class representing a Optical_Forces physical system containing particles."""
 
-    def __init__(self, particle_types : ParticleType | List[ParticleType], field: Field, medium_permittivity: float = 1.0) -> None:
+    def __init__(self, particle_types : ParticleType | List[ParticleType], field: Field, positions_unit: str, medium_permittivity: float = 1.0) -> None:
         """
         Initialize a System object by specifying the particle types, the field and the medium permittivity.
         """
@@ -34,6 +34,7 @@ class System:
         self.particle_types = particle_types
         self.field = field
         self.medium_permittivity = medium_permittivity
+        self.positions_unit = positions_unit
         self.particles = Particles()
     
     def add_particles(self,
@@ -58,7 +59,7 @@ class System:
         if particle_type is not None and particle_type not in self.particle_types:
             raise ValueError("The specified particle type is not part of the system's types.")
 
-        positions = np.array(positions)
+        positions = np.array(positions)* get_multiplier_nanometers(self.positions_unit)
         if positions.ndim == 1:
             positions = [[pos] for pos in positions.flatten().tolist()]
         elif positions.ndim == 2:
@@ -79,6 +80,7 @@ class ForceCalculator:
         """
         self.system = system
 
+
     def compute_forces(self, positions : np.ndarray | List[float] | List[List[float]]) -> np.ndarray:
         """
         Compute the optical forces on particles at specified positions.
@@ -93,9 +95,19 @@ class ForceCalculator:
         np.ndarray
             The computed optical forces on the particles.
         """
+        
         positions = np.array(positions)
 
-        forces = np.copy(positions)
+        if positions.ndim == 1:
+            positions = np.array([positions.flatten().tolist()])
+        elif positions.ndim != 2:
+            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
+
+        E_field = self.system.field.get_field_in_positions(positions)
+        E_grad = self.system.field.get_field_gradient_in_positions(positions)
+        dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
+        forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
+
         return forces
 
 

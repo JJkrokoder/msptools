@@ -21,22 +21,8 @@ def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndar
     Forces :
         An array representing the force on each dipole.
     """
-    
-    dimensions = dipole_moments.shape[1]
-    num_particles = dipole_moments.shape[0]
 
-    if field_gradient.shape != (num_particles, dimensions, dimensions):
-        raise ValueError("Field gradient shape must match (N, d, d) where N is number of dipoles and d is dimensionality.")
-    
-    DipFieldProd = np.zeros_like(dipole_moments, dtype=complex)
-
-    for i in range(num_particles):
-        particle_dipole = dipole_moments[i]
-        particle_gradient = field_gradient[i]
-        DipFieldProd[i] = particle_gradient @ particle_dipole.conj()
-    
-    forces = (medium_permittivity / 2) * np.real(DipFieldProd)
+    forces = (medium_permittivity / 2) * np.real(np.einsum('ij,ikj->ik', dipole_moments, np.conj(field_gradient)))
 
     return forces
-
 
