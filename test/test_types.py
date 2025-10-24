@@ -5,12 +5,6 @@ def test_initialize_default():
     my_type = msp.ParticleType()
     assert isinstance(my_type, msp.ParticleType), "The object is not an instance of ParticleType class"
 
-def test_initialize_with_polarizability():
-    polarizability_value = 1.5
-    my_type = msp.ParticleType(polarizability=polarizability_value)
-    computed_value = my_type.compute_polarizability(frequency=1.0, medium_permittivity=1.0)
-    assert computed_value == polarizability_value, "The polarizability value does not match the initialized value"
-
 class TestSphereType:
     
     def test_default_properties(self):

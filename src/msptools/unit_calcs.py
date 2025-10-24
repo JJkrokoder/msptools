@@ -155,7 +155,7 @@ def frequency_to_wavenumber_um(frequency_eV: float) -> float:
     """
     frequency_hz = frequency_eV * e / hbar
     wavenumber_m = frequency_hz / c
-    wavenumber_um = wavenumber_m * 1e6
+    wavenumber_um = wavenumber_m / 1e6
     return wavenumber_um
 
 def get_multiplier_nanometers(unit: str) -> float:

@@ -6,9 +6,6 @@ import numpy as np
 
 class ParticleType:
     """Class representing a type of particle with specific properties."""
-    def __init__(self, polarizability: float = None) -> None:
-        if polarizability is not None:
-            self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
         """Compute the polarizability of the particle type at a given frequency."""
@@ -18,15 +15,22 @@ class SphereType(ParticleType):
     """Class representing spherical particles."""
 
     def __init__(self, material: str, radius: float = 1.0, polarizability: float = None) -> None:
-        super().__init__(polarizability=polarizability)
         self.radius = radius
         self.material = material
+        if polarizability is not None:
+            self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
-    def select_computation_method(self, frequency: float) -> None:
-        """Select the polarizability computation method based on the material and excitation frequency."""
-        self.compute_polarizability = lambda frequency, medium_permittivity: CM_with_Radiative_Correction(radius=self.radius,
-                                                                                                       medium_permittivity=medium_permittivity,
-                                                                                                       particle_permittivity=permittivity_ridx(frequency, self.material),
-                                                                                                       wave_number=frequency_to_wavenumber_um(frequency)/1000)
+    def select_computation_method(self, frequency: float) -> Callable[[float, str], float]:
+        ... # Implementation of method selection based on material and frequency
+
+    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
+        return CM_with_Radiative_Correction(radius=self.radius,
+                                             medium_permittivity=medium_permittivity,
+                                             particle_permittivity=permittivity_ridx(frequency, self.material),
+                                             wave_number=frequency_to_wavenumber_um(frequency)/1000)
     
+    def compute_polarizability_CM(self, frequency: float, medium_permittivity: float) -> float:
+        return Clausius_Mossotti(radius=self.radius,
+                                 medium_permittivity=medium_permittivity,
+                                 particle_permittivity=permittivity_ridx(frequency, self.material))
 

@@ -40,7 +40,7 @@ def CM_with_Radiative_Correction(radius: float, medium_permittivity: float, part
         The permittivity of the surrounding medium.
     particle_permittivity :
         The permittivity of the particle material.
-    wave_number_um :
+    wave_number :
         The wave number of the incident light.
         
     

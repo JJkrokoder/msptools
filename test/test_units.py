@@ -30,7 +30,7 @@ def test_nm_to_eV():
 def test_eV_to_wavenumber_um():
     frequency_eV = 2.0  # 2 eV
     wavenumber_um = msp.frequency_to_wavenumber_um(frequency_eV)
-    expected_wavenumber_um = (frequency_eV * e) / (hbar * c) * 1e6
+    expected_wavenumber_um = (frequency_eV * e) / (hbar * c) / 1e6
     assert np.isclose(wavenumber_um, expected_wavenumber_um, atol=a_tolerance), f"Expected {expected_wavenumber_um}, got {wavenumber_um}"
 
 def test_get_multiplier_nanometers():
