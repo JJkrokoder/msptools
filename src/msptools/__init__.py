@@ -36,6 +36,9 @@ class System:
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles()
+
+        for ptype in self.particle_types:
+            ptype.select_computation_method(frequency = self.field.get_frequency())
     
     def add_particles(self,
                      positions: np.ndarray | List[float] | List[List[float]],
@@ -67,7 +70,7 @@ class System:
         else:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
-        polarizability = particle_type.compute_polarizability(self.field.frequency, self.medium_permittivity)
+        polarizability = particle_type.compute_polarizability(self.field.get_frequency(), self.medium_permittivity)
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
 
 

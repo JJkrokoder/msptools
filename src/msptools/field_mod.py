@@ -72,8 +72,8 @@ class Field:
             if frequency_unit is None:
                 raise ValueError("'frequency' specified but 'frequency_unit' is None.")
             else:
-                self.frequency = frequency_to_eV(frequency, frequency_unit)
-                self.wave_number_um = frequency_to_wavenumber_um(self.frequency)
+                self.frequency_eV = frequency_to_eV(frequency, frequency_unit)
+                self.wave_number_um = frequency_to_wavenumber_um(self.frequency_eV)
                 self.wavelength_nm = 2*np.pi*1000/self.wave_number_um
         else:
             if wavelength_unit is None:
@@ -81,11 +81,33 @@ class Field:
             else:  
                 wavelength_nm = wavelength_to_nm(wavelength, wavelength_unit)
                 self.wavelength_nm = wavelength_nm
-                self.frequency = nm_to_eV(wavelength_nm)
+                self.frequency_eV = nm_to_eV(wavelength_nm)
                 self.wave_number_um = 2*np.pi*1000/self.wavelength_nm
 
     def __str__(self):
         return f"Field: frequency = {self.frequency:.4f} eV, wavelength = {self.wavelength_nm:.2f} nm"
+    
+    def get_frequency(self) -> float:
+        """
+        Method to get the frequency of the field in eV.
+
+        Returns
+        -------
+        float
+            The frequency of the field in eV.
+        """
+        return self.frequency_eV
+    
+    def get_wavelength(self) -> float:
+        """
+        Method to get the wavelength of the field in nanometers (nm).
+
+        Returns
+        -------
+        float
+            The wavelength of the field in nanometers (nm).
+        """
+        return self.wavelength_nm
 
 
     def get_external_field_in_positions(self, positions: np.ndarray) -> np.ndarray:
@@ -146,3 +168,4 @@ class PlaneWaveField(Field):
             positions=positions,
             k_magnitude=self.wave_number_um / 1000  # convert from um^-1 to nm^-1
         )
+

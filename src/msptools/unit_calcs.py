@@ -127,6 +127,20 @@ def nm_to_eV(wavelength_nm: float) -> float:
     frequency_eV = h * c / wavelength_m / e
     return frequency_eV
 
+def eV_to_nm(frequency_eV: float) -> float:
+    """
+    Convert frequency in electron volts / hbar (eV) to wavelength in nanometers (nm).
+    
+    Parameters:
+        frequency_eV:
+            Frequency value in electron volts / hbar (eV).
+    Returns:
+        Wavelength in nanometers (nm).
+    """
+
+    wavelength_nm = 1e9 * h * c / (frequency_eV * e)
+    return wavelength_nm
+
 
 def frequency_to_wavenumber_um(frequency_eV: float) -> float:
     """

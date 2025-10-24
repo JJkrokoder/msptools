@@ -1,12 +1,18 @@
 import numpy as np
 import msptools as msp
 
-
 class Test_General_Field():
 
     def test_initialize_with_frequency_ev(self):
         field = msp.Field(frequency=2.0, frequency_unit="eV")
-        assert np.isclose(field.frequency, 2.0), "Field frequency should be initialized to 2.0 eV"
+        assert np.isclose(field.get_frequency(), 2.0), "Field frequency should be initialized to 2.0 eV"
+    
+    def test_initialize_with_wavelength_cm(self):
+        field = msp.Field(wavelength=500.0, wavelength_unit="cm")
+        wavelength_nm = 500.0 * 1e7  # Convert cm to nm
+        frequency_eV = 1239.84193 / wavelength_nm
+        assert np.isclose(field.get_frequency(), frequency_eV), f"Field frequency should be initialized to ~{frequency_eV} eV"
+        assert np.isclose(field.get_wavelength(), wavelength_nm), f"Field wavelength should be initialized to {wavelength_nm} nm"
 
 def test_plane_wave_func_in_zero():
     direction = np.array([0, 0, 1])

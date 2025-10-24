@@ -1,4 +1,6 @@
 from .polarizability_mod import *
+from .unit_calcs import *
+from .permittivity import permittivity_ridx
 from typing import List, Tuple, Self, Callable
 import numpy as np
 
@@ -19,8 +21,12 @@ class SphereType(ParticleType):
         super().__init__(polarizability=polarizability)
         self.radius = radius
         self.material = material
+
+    def select_computation_method(self, frequency: float) -> None:
+        """Select the polarizability computation method based on the material and excitation frequency."""
+        self.compute_polarizability = lambda frequency, medium_permittivity: CM_with_Radiative_Correction(radius=self.radius,
+                                                                                                       medium_permittivity=medium_permittivity,
+                                                                                                       particle_permittivity=permittivity_ridx(frequency, self.material),
+                                                                                                       wave_number=frequency_to_wavenumber_um(frequency)/1000)
     
-    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        """PLACEHOLDER: Compute the polarizability of the spherical particle."""
-        return 1.0 + 0.0j
 
