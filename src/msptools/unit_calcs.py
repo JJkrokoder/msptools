@@ -158,6 +158,22 @@ def frequency_to_wavenumber_um(frequency_eV: float) -> float:
     wavenumber_um = wavenumber_m / 1e6
     return wavenumber_um
 
+def frequency_to_wavenumber_nm(frequency_eV: float) -> float:
+    """
+    Convert frequency in electron volts / hbar (eV) to wavenumber in inverse nanometers (1/nm).
+    
+    Parameters:
+        frequency_eV:
+            Frequency value in electron volts / hbar (eV).
+
+    Returns:
+        Wavenumber in inverse nanometers (1/nm).
+    """
+    frequency_hz = frequency_eV * e / hbar
+    wavenumber_m = frequency_hz / c
+    wavenumber_nm = wavenumber_m / 1e9
+    return wavenumber_nm
+
 def get_multiplier_nanometers(unit: str) -> float:
     """
     Get the multiplier to convert a given unit to nanometers (nm).

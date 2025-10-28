@@ -24,10 +24,10 @@ class SphereType(ParticleType):
         ... # Implementation of method selection based on material and frequency
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        return CM_with_Radiative_Correction(radius=self.radius,
-                                             medium_permittivity=medium_permittivity,
-                                             particle_permittivity=permittivity_ridx(frequency, self.material),
-                                             wave_number=frequency_to_wavenumber_um(frequency)/1000)
+        return Mie_size_expansion(radius=self.radius,
+                                  medium_permittivity=medium_permittivity,
+                                  particle_permittivity=permittivity_ridx(frequency, self.material),
+                                  wave_number=frequency_to_wavenumber_nm(frequency))
     
     def compute_polarizability_CM(self, frequency: float, medium_permittivity: float) -> float:
         return Clausius_Mossotti(radius=self.radius,
