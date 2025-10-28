@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 from msptools.permittivity import permittivity_Drude, permittivity_ridx
+from msptools.unit_calcs import eV_to_nm
+
 
 @pytest.mark.parametrize("frequency", [1e2, 1e3, 1e4, 1e5])
 def test_high_frequency_Drude_permittivity(frequency):
@@ -27,10 +29,23 @@ class Test_DrudePermittivity_parts():
         assert np.isclose(self.epsilon.imag, expected_imag, rtol=1e-12), f"Expected imaginary part {expected_imag:4f}, got {self.epsilon.imag:4f}"
 
 class Test_RidxPermittivity():
-    def test_gold_permittivity_at_500nm(self):
-        frequency_ev = 2.48  # Corresponds to 500 nm
+    def test_gold_permittivity_at_2_5eV(self):
+        frequency_ev = 2.50
         material = "Au"
         epsilon = permittivity_ridx(frequency=frequency_ev, material=material)
-        expected_epsilon = -2.5676 + 3.6391j  # Known value for gold at 500 nm
-        assert np.isclose(epsilon.real, expected_epsilon.real, rtol=2e-1), f"Expected real part {expected_epsilon.real}, got {epsilon.real}"
-        assert np.isclose(epsilon.imag, expected_epsilon.imag, rtol=2e-1), f"Expected imaginary part {expected_epsilon.imag}, got {epsilon.imag}"
+        expected_epsilon = -1.92 + 2.79j  # Known value for gold at 2.5 eV (Babar data)
+        assert np.isclose(epsilon.real, expected_epsilon.real, rtol=1e-2), f"Expected real part {expected_epsilon.real}, got {epsilon.real}"
+        assert np.isclose(epsilon.imag, expected_epsilon.imag, rtol=1e-2), f"Expected imaginary part {expected_epsilon.imag}, got {epsilon.imag}"
+    
+    def test_find_gold_resonance_peak(self):
+        material = "Au"
+        minE = 2.40  # eV
+        maxE = 2.50  # eV
+        energies = np.linspace(minE, maxE, 30)
+        permittivities = permittivity_ridx(energies, material=material)
+        aux = permittivities.real + 2
+        min_index = np.argmin(np.abs(aux))
+        resonance_energy = energies[min_index]
+        resonance_wavelength_nm = eV_to_nm(resonance_energy)
+        expected_wavelength_nm = 497  # Approximate known resonance wavelength for gold nanoparticles
+        assert np.isclose(resonance_wavelength_nm, expected_wavelength_nm, rtol=1e-2), f"Expected resonance wavelength around {expected_wavelength_nm} nm, got {resonance_wavelength_nm} nm"

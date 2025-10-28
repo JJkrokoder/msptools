@@ -15,7 +15,7 @@ def obtain_ridx_material_info(material: str) -> tuple:
         A tuple containing the shelf, book, and page information.
     """
     material_info = {
-        "Au": ("main", "Au", "McPeak"),
+        "Au": ("main", "Au", "Babar"),
         # Add more materials as needed
     }
 

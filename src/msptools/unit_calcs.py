@@ -1,4 +1,5 @@
 from scipy.constants import c, h, e, hbar
+import numpy as np
 
 multipliers = {
     "a": 1e-18,
@@ -20,7 +21,7 @@ multipliers = {
     "E": 1e18,
 }
 
-def frequency_to_eV(frequency: float, frequency_unit: str) -> float:
+def frequency_to_eV(frequency: float | np.ndarray, frequency_unit: str) -> float | np.ndarray:
     """
     Convert frequency to energy in electron volts / hbar (eV).
     
@@ -69,7 +70,7 @@ def frequency_to_eV(frequency: float, frequency_unit: str) -> float:
     return frequency_in_eV
 
 
-def wavelength_to_nm(wavelength: float, wavelength_unit: str) -> float:
+def wavelength_to_nm(wavelength: float | np.ndarray, wavelength_unit: str) -> float | np.ndarray:
     """
     Convert wavelength to nanometers (nm).
     
@@ -112,7 +113,7 @@ def wavelength_to_nm(wavelength: float, wavelength_unit: str) -> float:
 
     return wavelength_in_nm
 
-def nm_to_eV(wavelength_nm: float) -> float:
+def nm_to_eV(wavelength_nm: float | np.ndarray) -> float | np.ndarray:
     """
     Convert wavelength in nanometers (nm) to frequency in electron volts / hbar (eV).
     
@@ -127,7 +128,7 @@ def nm_to_eV(wavelength_nm: float) -> float:
     frequency_eV = h * c / wavelength_m / e
     return frequency_eV
 
-def eV_to_nm(frequency_eV: float) -> float:
+def eV_to_nm(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavelength in nanometers (nm).
     
@@ -142,7 +143,7 @@ def eV_to_nm(frequency_eV: float) -> float:
     return wavelength_nm
 
 
-def frequency_to_wavenumber_um(frequency_eV: float) -> float:
+def frequency_to_wavenumber_um(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavenumber in inverse micrometers (1/µm).
     
@@ -158,7 +159,7 @@ def frequency_to_wavenumber_um(frequency_eV: float) -> float:
     wavenumber_um = wavenumber_m / 1e6
     return wavenumber_um
 
-def frequency_to_wavenumber_nm(frequency_eV: float) -> float:
+def frequency_to_wavenumber_nm(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavenumber in inverse nanometers (1/nm).
     
