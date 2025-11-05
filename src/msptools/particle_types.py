@@ -24,7 +24,7 @@ class SphereType(ParticleType):
         ... # Implementation of method selection based on material and frequency
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        return Mie_size_expansion(radius=self.radius,
+        return Mie_size_dipole_approximation(radius=self.radius,
                                   medium_permittivity=medium_permittivity,
                                   particle_permittivity=permittivity_ridx(frequency, self.material),
                                   wave_number=frequency_to_wavenumber_nm(frequency))
