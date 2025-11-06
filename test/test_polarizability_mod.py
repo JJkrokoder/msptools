@@ -1,5 +1,7 @@
 import numpy as np
 import msptools as mspt
+from scipy.special import spherical_jn as sph_jn
+from scipy.special import spherical_yn as sph_yn
 
 def test_Clausius_Mossotti():
     radius = 0.08  # um
@@ -37,3 +39,28 @@ def test_Zhou_data_with_Mie_dipole_approximation():
     
     assert np.allclose(alpha_nm.real*(1e-9)**3, alpha_real_zhou, atol=1e-5), "Mie dipole approximation does not match Zhou data within tolerance."
 
+def test_hankel_plus():
+    x = np.linspace(0.1, 10, 5)
+    n = [0, 1, 2, 3, 4]
+
+    for order in n:
+        hnk = mspt.polarizability_mod.hankel_plus(order, x)
+        expected_hnk = sph_jn(order, x) * 1j - sph_yn(order, x)
+        dhnk = mspt.polarizability_mod.hankel_plus(order, x, derivative=True)
+        expected_dhnk = (sph_jn(order, x, derivative=True) * 1j) - sph_yn(order, x, derivative=True)
+        assert np.allclose(hnk, expected_hnk), f"Hankel function of order {order} does not match expected values."
+        assert np.allclose(dhnk, expected_dhnk), f"Derivative of Hankel function of order {order} does not match expected values."
+
+def test_Mie_dipole_for_small_radius():
+    radius = 10  # nm, very small particle
+    medium_permittivity = 1.33**2
+    wavelength_nm = 2000  # nm
+    frequency_eV = mspt.nm_to_eV(wavelength_nm)
+    particle_permittivity = mspt.permittivity.permittivity_ridx(frequency_eV, 'Au')
+    size_parameter = mspt.frequency_to_wavenumber_nm(frequency_eV) * radius
+
+    alpha_mie_approx = mspt.polarizability_mod.Mie_size_dipole_approximation(radius, medium_permittivity, particle_permittivity, mspt.frequency_to_wavenumber_nm(frequency_eV))
+    alpha_mie = mspt.polarizability_mod.Mie_electric_dipole_polarizability(radius, medium_permittivity, particle_permittivity, mspt.frequency_to_wavenumber_nm(frequency_eV))
+
+    assert np.isclose(alpha_mie_approx.real, alpha_mie.real, rtol=5e-4, atol=size_parameter**4), f"Mie dipole approx real part {alpha_mie_approx.real:.2f} not close to Mie electric dipole {alpha_mie.real:.2f}. rerror: {abs(alpha_mie_approx.real - alpha_mie.real)/abs(alpha_mie.real):.2e}, aerror: {abs(alpha_mie_approx.real - alpha_mie.real):.2e}, size_param^4: {size_parameter**4:.2e}"
+    assert np.isclose(alpha_mie_approx.imag, alpha_mie.imag, rtol=5e-4, atol=size_parameter**4), f"Mie dipole approx imag part {alpha_mie_approx.imag:.2f} not close to Mie electric dipole {alpha_mie.imag:.2f}. rerror: {abs(alpha_mie_approx.imag - alpha_mie.imag)/abs(alpha_mie.imag):.2e}, aerror: {abs(alpha_mie_approx.imag - alpha_mie.imag):.2e}, size_param^4: {size_parameter**4:.2e}"

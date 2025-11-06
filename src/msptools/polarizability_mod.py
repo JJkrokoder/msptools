@@ -6,7 +6,7 @@ from scipy.special import spherical_yn as sph_yn
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
     """Select the polarizability computation method based on the material and excitation wavelength."""  
 
-def hankel_first_kind(n: int, x: float, derivative: bool = False) -> complex:
+def hankel_plus(n: int, x: float, derivative: bool = False) -> complex:
     """Compute the spherical Hankel function of the first kind."""
     return sph_jn(n, x, derivative) * 1j - sph_yn(n, x, derivative)
 
@@ -107,24 +107,23 @@ def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float
     -----
     The electric dipole polarizability is derived from the first Mie coefficient (a1).
     The formula is given by:
-    alpha_e = 2*pi/k_m^2*tEl=1
-    where k_m is the wave number in the medium and tEl=1 is the first Mie coefficient for the electric dipole.
+    alpha_e = 6*pi/k_m^3*tE1
+    where k_m is the wave number in the medium and tE1 is the first Mie coefficient for the electric dipole.
     - Wave number and radius should be in consistent units.
     """
-
-    k_m = wave_number * np.sqrt(medium_permittivity)
-    x = wave_number * radius * particle_permittivity ** 0.5
+    k_m = wave_number * medium_permittivity**0.5
+    k_p = wave_number * particle_permittivity**0.5
+    x_p = k_p * radius
     x_m = k_m * radius
     eps_m = medium_permittivity
     eps_p = particle_permittivity
 
-    t11 = eps_p * sph_jn(1,x) * (sph_jn(1,x_m) + x_m * sph_jn(1,x_m,derivative=True))
-    t12 = eps_m * sph_jn(1,x_m) * (sph_jn(1,x) + x * sph_jn(1,x,derivative=True))
-    t21 = eps_m * hankel_first_kind(1,x_m) * (sph_jn(1,x) + x * sph_jn(1,x,derivative=True))
-    t22 = eps_p * sph_jn(1,x) * (hankel_first_kind(1,x_m) + x_m * hankel_first_kind(1,x_m,derivative=True))
+    t11 = eps_p * sph_jn(1,x_p) * (sph_jn(1,x_m) + x_m * sph_jn(1,x_m,derivative=True))
+    t12 = eps_m * sph_jn(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
+    t21 = eps_m * hankel_plus(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
+    t22 = eps_p * sph_jn(1,x_p) * (hankel_plus(1,x_m) + x_m * hankel_plus(1,x_m,derivative=True))
 
+    tE1 = (t11 - t12) / (t21 - t22)
 
-    t1 = (t11 - t12) / (t21 - t22)
-
-    alpha_e = 2 * np.pi / (k_m**3) * t1
+    alpha_e = 6 * np.pi / (k_m**3) * tE1
     return alpha_e
