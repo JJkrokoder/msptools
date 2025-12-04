@@ -1,44 +1,7 @@
 from typing import List
 import numpy as np
-from .unit_calcs import *
-
-def plane_wave_function(direction: np.ndarray,
-                        amplitude: np.ndarray,
-                        positions: np.ndarray,
-                        k_magnitude: float) -> np.ndarray:
-    """
-    Calculate the electric field of a plane wave at given positions.
-
-    Parameters
-    ----------
-    direction :
-        The propagation direction of the plane wave as a 3-element list or array.
-        It is assumed to be normalized.
-    amplitude :
-        The amplitude vector of the plane wave.
-    positions :
-        The positions at which to evaluate the field.
-    k_magnitude :
-        The magnitude of the wave vector.
-
-    Returns
-    -------
-    np.ndarray
-        The electric field at specified positions.
-
-    Notes
-    -----
-    The electric field of a plane wave is given by:
-    E(r) = A * exp(i * k · r)
-    where A is the amplitude, k is the wave vector, and r is the position vector
-    - positions and k_magnitude should be in consistent units.
-    """
-    
-    k_vector = direction * k_magnitude
-
-    phase_factors = np.exp(1j * np.dot(positions, k_vector))
-    electric_field = phase_factors[:, np.newaxis] * amplitude.T
-    return electric_field
+from .tools.unit_calcs import *
+from .tools.field_tools import *
 
 
 class Field:
@@ -128,6 +91,25 @@ class Field:
         else:
             return self.external_field_function(positions)
     
+    def get_external_gradient_in_positions(self, positions: np.ndarray) -> np.ndarray:
+        """
+        Method to get the external electric field gradient at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The positions at which to evaluate the external field gradient. Asumed to be in nanometers (nm).
+
+        Returns
+        -------
+        np.ndarray
+            The external electric field gradient at the specified positions.
+        """
+        if self.external_gradient_function is None:
+            raise NotImplementedError("The method 'get_external_gradient_in_positions' must be implemented in subclasses.")
+        else:
+            return self.external_gradient_function(positions)
+    
 
 class PlaneWaveField(Field):
     """Class representing a plane wave electromagnetic field."""
@@ -159,13 +141,49 @@ class PlaneWaveField(Field):
         """
 
         super().__init__(**kwargs)
-        self.amplitude = amplitude * np.array(polarization) / np.linalg.norm(polarization)
+        self.amplitude = amplitude
+        self.polarization = np.array(polarization) / np.linalg.norm(polarization)
         self.direction = np.array(direction) / np.linalg.norm(direction)
         
         self.external_field_function = lambda positions: plane_wave_function(
             direction=self.direction,
-            amplitude=self.amplitude,
+            amplitude_vec=self.amplitude * self.polarization,
             positions=positions,
             k_magnitude=self.wave_number_um / 1000  # convert from um^-1 to nm^-1
         )
+    
+    def get_direction(self) -> np.ndarray:
+        """
+        Method to get the propagation direction of the plane wave.
+
+        Returns
+        -------
+        np.ndarray
+            The normalized propagation direction of the plane wave.
+        """
+        return self.direction
+    
+    def get_polarization(self) -> np.ndarray:
+        """
+        Method to get the polarization vector of the plane wave.
+
+        Returns
+        -------
+        np.ndarray
+            The normalized polarization vector of the plane wave.
+        """
+        return self.polarization
+    
+    def get_amplitude(self) -> float | complex:
+        """
+        Method to get the amplitude of the plane wave.
+
+        Returns
+        -------
+        float | complex
+            The amplitude of the plane wave.
+        """
+        return self.amplitude
+    
+
 

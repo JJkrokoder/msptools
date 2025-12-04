@@ -1,7 +1,7 @@
 import refractiveindex as ridx
 from scipy.constants import c, e, h
-from .unit_calcs import *
-from .ridx_usage import obtain_ridx_material_info
+from .tools.unit_calcs import *
+from .tools.ridx_usage import obtain_ridx_material_info
 import numpy as np
 
 def permittivity_Drude(frequency: float, plasma_frequency: float, collision_frequency: float, epsilon_inf: float) -> complex:

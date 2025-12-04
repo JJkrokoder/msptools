@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from msptools.permittivity import permittivity_Drude, permittivity_ridx
-from msptools.unit_calcs import eV_to_nm
 
 
 @pytest.mark.parametrize("frequency", [1e2, 1e3, 1e4, 1e5])
@@ -46,6 +45,6 @@ class Test_RidxPermittivity():
         aux = permittivities.real + 2
         min_index = np.argmin(np.abs(aux))
         resonance_energy = energies[min_index]
-        resonance_wavelength_nm = eV_to_nm(resonance_energy)
+        resonance_wavelength_nm = 1240 / resonance_energy  # Convert eV to nm
         expected_wavelength_nm = 497  # Approximate known resonance wavelength for gold nanoparticles
         assert np.isclose(resonance_wavelength_nm, expected_wavelength_nm, rtol=1e-2), f"Expected resonance wavelength around {expected_wavelength_nm} nm, got {resonance_wavelength_nm} nm"

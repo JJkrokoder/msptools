@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from .unit_calcs import get_multiplier_nanometers
+from .tools.unit_calcs import get_multiplier_nanometers
 
 
 class Particles:

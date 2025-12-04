@@ -2,7 +2,7 @@ import msptools as msp
 import numpy as np
 
 # Create a type
-type1 = msp.SphereType(radius=2.5, material="wood")
+type1 = msp.SphereType(radius=2.5, material="Au")
 
 # Create a ParticleData object with the custom type
 system = msp.System(particle_types=type1, field=msp.Field(frequency=1.0,

@@ -7,7 +7,7 @@ from .particle_types import *
 from .particles_mod import *
 from .permittivity import *
 from .field_mod import *
-from .unit_calcs import *
+from .tools.unit_calcs import *
 from typing import List
 
 
