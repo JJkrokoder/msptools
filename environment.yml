@@ -8,5 +8,6 @@ dependencies:
   - scipy
   - pytest
   - sphinx
+  - matplotlib
   - pip:
     - refractiveindex
