@@ -69,12 +69,13 @@ class Particles:
 
         return self.positions[index]
     
-    def clean_positions(self) -> None:
+    def clean_particles(self) -> None:
         """
-        Remove all particles' positions from the system.
+        Remove all particles' data from the system.
         """
 
         self.positions = []
+        self.polarizabilities = []
 
 
     def _calculate_polarizabilities(self) -> None:
