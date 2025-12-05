@@ -16,7 +16,7 @@ def plane_wave_function(direction: np.ndarray,
     amplitude :
         The amplitude vector of the plane wave.
     positions :
-        The positions at which to evaluate the field.
+        The positions at which to evaluate the field. It should be an array of shape (N, 3) where N is the number of positions.
     k_magnitude :
         The magnitude of the wave vector.
 
@@ -35,6 +35,35 @@ def plane_wave_function(direction: np.ndarray,
     
     k_vector = direction * k_magnitude
 
-    phase_factors = np.exp(1j * np.dot(positions, k_vector))
+    phase_factors = np.exp(1j * positions @ k_vector)
     electric_field = phase_factors[:, np.newaxis] * amplitude_vec.T
     return electric_field
+
+def plane_wave_gradient(direction: np.ndarray,
+                        amplitude_vec: np.ndarray,
+                        positions: np.ndarray,
+                        k_magnitude: float) -> np.ndarray:
+    """
+    Calculate the gradient of the electric field of a plane wave at given positions.
+
+    Parameters
+    ----------
+    direction :
+        The propagation direction of the plane wave as a 3-element list or array.
+        It is assumed to be normalized.
+    amplitude :
+        The amplitude vector of the plane wave.
+    positions :
+        The positions at which to evaluate the field gradient.
+    k_magnitude :
+        The magnitude of the wave vector.
+
+    Returns
+    -------
+    np.ndarray
+        The gradient of the electric field at specified positions.
+    """
+    k_vector = direction * k_magnitude
+    phase_factors = np.exp(1j * positions @ k_vector)
+    gradient = 1j * np.einsum('ij,k -> ijk',np.outer(phase_factors, k_vector), amplitude_vec)
+    return gradient
