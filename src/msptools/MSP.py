@@ -98,7 +98,6 @@ def array_MSP_iterative(polarizability : np.ndarray,
             raise ValueError("The new field is significantly larger than the external field, indicating potential divergence in the iterative method.")
 
         if np.allclose(new_field, old_field, rtol=tolerance):
-            print(f"MSP iterative solution converged after {iteration + 1} iterations.")
             break
         old_field = new_field.copy()
 

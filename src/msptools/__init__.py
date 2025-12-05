@@ -8,6 +8,8 @@ from .particles_mod import *
 from .permittivity import *
 from .field_mod import *
 from .tools.unit_calcs import *
+from .GreenTensor_Electric import *
+from .MSP import *
 from typing import List
 
 
@@ -20,6 +22,8 @@ __all__ = [
     "permittivity",
     "field_mod",
     "unit_calcs",
+    "GreenTensor_Electric",
+    "MSP"
 ]
 
 class System:
@@ -72,6 +76,44 @@ class System:
 
         polarizability = particle_type.compute_polarizability(self.field.get_frequency(), self.medium_permittivity)
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
+    
+    def get_field_in_particles(self) -> np.ndarray:
+        """
+        Get the electric field at specified positions by solving the Multiple Scattering Problem (MSP).
+
+        Returns
+        -------
+        np.ndarray
+            The electric field at the specified positions.
+        """
+        
+
+        external_field = self.field.get_external_field_in_positions(self.particles.get_positions())
+        wave_number = frequency_to_wavenumber_nm(self.field.get_frequency())
+        green_tensor = construct_green_tensor(self.particles.get_positions(), wave_number)
+        field_solution = solve_MSP_from_arrays(polarizability=self.particles.polarizabilities,
+                                   external_field=external_field,
+                                   wave_number=wave_number,
+                                   green_tensor=green_tensor,
+                                   method='Iterative')
+        return field_solution
+    
+    def set_position(self, index: int, position: np.ndarray | List[float]) -> None:
+        """
+        Set the position of a particle at a specified index.
+
+        Parameters
+        ----------
+        index :
+            The index of the particle to set the position for.
+
+        position :
+            The new position of the particle. This can be a 1D-three-element array-like.
+        """
+        position = np.array(position)* get_multiplier_nanometers(self.positions_unit)
+        if position.ndim != 1 or position.shape[0] != 3:
+            raise ValueError("Position must be a 1D-three-element array-like.")
+        self.particles.set_position(index, position.tolist())
 
 
 class ForceCalculator:
@@ -106,8 +148,8 @@ class ForceCalculator:
         elif positions.ndim != 2:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
-        E_field = self.system.field.get_field_in_positions(positions)
-        E_grad = self.system.field.get_field_gradient_in_positions(positions)
+        E_field = self.system.get_field_in_positions(positions)
+        E_grad = self.system.get_field_gradient_in_positions(positions)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 

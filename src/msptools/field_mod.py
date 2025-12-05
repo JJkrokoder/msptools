@@ -109,6 +109,8 @@ class Field:
             raise NotImplementedError("The method 'get_external_gradient_in_positions' must be implemented in subclasses.")
         else:
             return self.external_gradient_function(positions)
+        
+
     
 
 class PlaneWaveField(Field):
@@ -138,6 +140,10 @@ class PlaneWaveField(Field):
             The wavelength of the plane wave.
         wavelength_unit :
             The unit of the wavelength.
+
+        Notes
+        -----
+        positions are considered to be in same units as wavelength (default nm).
         """
 
         super().__init__(**kwargs)
@@ -148,8 +154,15 @@ class PlaneWaveField(Field):
         self.external_field_function = lambda positions: plane_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
-            positions=positions,
-            k_magnitude=self.wave_number_um / 1000  # convert from um^-1 to nm^-1
+            positions=positions, 
+            k_magnitude=self.wave_number_um/1000  # Convert um^-1 to nm^-1
+        )
+
+        self.external_gradient_function = lambda positions: plane_wave_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=self.wave_number_um/1000  # Convert um^-1 to nm^-1
         )
     
     def get_direction(self) -> np.ndarray:

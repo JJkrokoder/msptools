@@ -36,7 +36,7 @@ def plane_wave_function(direction: np.ndarray,
     k_vector = direction * k_magnitude
 
     phase_factors = np.exp(1j * positions @ k_vector)
-    electric_field = phase_factors[:, np.newaxis] * amplitude_vec.T
+    electric_field = np.outer(phase_factors, amplitude_vec.T)
     return electric_field
 
 def plane_wave_gradient(direction: np.ndarray,

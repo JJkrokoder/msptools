@@ -49,9 +49,6 @@ class Particles:
         """
 
         positions = np.array(self.positions)
-
-        if positions.shape[0] == 1:
-            return positions[0]
         
         return positions
     
@@ -91,4 +88,17 @@ class Particles:
             polarizability = particle_type.compute_polarizability()
             self.polarizabilities.append(polarizability)
 
+    def set_position(self, index: int, position: List[float]) -> None:
+        """
+        Set the position of a particle at a specified index.
+
+        Parameters
+        ----------
+        index :
+            The index of the particle to set the position for.
+        position :
+            The new position of the particle. This can be a 1D-three-element array-like.
+        """
+        
+        self.positions[index] = position
 

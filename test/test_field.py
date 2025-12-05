@@ -57,5 +57,30 @@ class Test_Plane_Wave_Field():
         computed_field = field.external_field_function(positions)
 
         assert np.allclose(computed_field, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_field}"
+    
+    def test_plane_wave_field_external_gradient_function_units_and_formula(self):
+        direction = [0, 0, 1]
+        amplitude = 1.0
+        polarization = [1.0, 0.0, 0.0]
+        wavelength = 500.0  # nm
+
+        field = msp.PlaneWaveField(direction=direction,
+                                   amplitude=amplitude,
+                                   polarization=polarization,
+                                   wavelength=wavelength,
+                                   wavelength_unit="nm")
+        
+        positions_nm = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 125.0],
+                              [0.0, 0.0, 250.0]])
+        
+        k_magnitude = 2 * np.pi / wavelength  # in nm^-1
+        expected_gradient = 1j * k_magnitude * np.einsum('ij,k -> ijk',
+                                                            np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), direction),
+                                                            np.array(polarization))
+
+        computed_gradient = field.external_gradient_function(positions_nm)
+
+        assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
 
 

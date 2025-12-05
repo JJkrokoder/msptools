@@ -20,17 +20,13 @@ class SphereType(ParticleType):
         if polarizability is not None:
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
-    def select_computation_method(self, frequency: float) -> Callable[[float, str], float]:
-        ... # Implementation of method selection based on material and frequency
+    def select_computation_method(self, frequency: float):
+        self.compute_method = Mie_electric_dipole_polarizability
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        return Mie_size_dipole_approximation(radius=self.radius,
+        return self.compute_method(radius=self.radius,
                                   medium_permittivity=medium_permittivity,
                                   particle_permittivity=permittivity_ridx(frequency, self.material),
                                   wave_number=frequency_to_wavenumber_nm(frequency))
     
-    def compute_polarizability_CM(self, frequency: float, medium_permittivity: float) -> float:
-        return Clausius_Mossotti(radius=self.radius,
-                                 medium_permittivity=medium_permittivity,
-                                 particle_permittivity=permittivity_ridx(frequency, self.material))
 
