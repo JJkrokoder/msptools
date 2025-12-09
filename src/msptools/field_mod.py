@@ -148,8 +148,8 @@ class PlaneWaveField(Field):
 
         super().__init__(**kwargs)
         self.amplitude = amplitude
-        self.polarization = np.array(polarization) / np.linalg.norm(polarization)
-        self.direction = np.array(direction) / np.linalg.norm(direction)
+        self.polarization = np.array(polarization) / np.linalg.norm(np.array(polarization))
+        self.direction = np.array(direction) / np.linalg.norm(np.array(direction))
         
         self.external_field_function = lambda positions: plane_wave_function(
             direction=self.direction,

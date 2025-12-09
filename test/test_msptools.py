@@ -25,5 +25,5 @@ class TestSystem:
         
         assert len(system.particles.positions) == 2, "There should be two particles in the system"
         assert all(isinstance(pos, list) for pos in system.particles.positions), "Positions should be stored as lists"
-
+    
     

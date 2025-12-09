@@ -40,6 +40,7 @@ class System:
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles()
+        self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.get_frequency()) * np.sqrt(self.medium_permittivity)
 
         for ptype in self.particle_types:
             ptype.select_computation_method(frequency = self.field.get_frequency())
@@ -89,16 +90,15 @@ class System:
         
 
         external_field = self.field.get_external_field_in_positions(self.particles.get_positions())
-        wave_number = frequency_to_wavenumber_nm(self.field.get_frequency())
-        green_tensor = construct_green_tensor(self.particles.get_positions(), wave_number)
+        green_tensor = construct_green_tensor(self.particles.get_positions(), self.medium_wave_number_nm)
         field_solution = solve_MSP_from_arrays(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
-                                   wave_number=wave_number,
+                                   wave_number=self.medium_wave_number_nm,
                                    green_tensor=green_tensor,
                                    method='Iterative')
         return field_solution
     
-    def set_position(self, index: int, position: np.ndarray | List[float]) -> None:
+    def set_position(self, index: int, position: np.ndarray[int, 3] | List[float]) -> None:
         """
         Set the position of a particle at a specified index.
 
@@ -148,8 +148,8 @@ class ForceCalculator:
         elif positions.ndim != 2:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
-        E_field = self.system.get_field_in_positions(positions)
-        E_grad = self.system.get_field_gradient_in_positions(positions)
+        E_field = self.system.get_field_in_particles(positions)
+        E_grad = self.system.get_field_gradient_in_particles(positions)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 
