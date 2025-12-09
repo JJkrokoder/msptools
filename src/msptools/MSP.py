@@ -80,21 +80,15 @@ def array_MSP_iterative(polarizability : np.ndarray,
         The solution to the MSP.
     """
 
-    num_particles = external_field.shape[0]
-    dimensions = external_field.shape[1]
-
-    green_tensor_matrix = green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
-    external_field_array = external_field.reshape(num_particles * dimensions, 1)
-    old_field = external_field_array.copy()
+    old_field = external_field.copy()
 
     for iteration in range(num_iterations):
         
-        dipole_moments = calculate_dipole_moments_linear(polarizability, old_field.reshape(num_particles, dimensions))
-        dipole_moments = dipole_moments.reshape(num_particles*dimensions, 1)
-        scattered_field = wave_number**2 * green_tensor_matrix @ dipole_moments
-        new_field = external_field_array + scattered_field
+        dipole_moments = calculate_dipole_moments_linear(polarizability, old_field)
+        scattered_field = wave_number**2 * np.einsum('ijmn,jn->im', green_tensor, dipole_moments)
+        new_field = external_field + scattered_field
 
-        if np.any(np.abs(new_field)/np.abs(external_field_array) > 1e6 ):
+        if np.any(np.abs(new_field)/np.abs(external_field) > 1e6 ):
             raise ValueError("The new field is significantly larger than the external field, indicating potential divergence in the iterative method.")
 
         if np.allclose(new_field, old_field, rtol=tolerance):
@@ -104,7 +98,7 @@ def array_MSP_iterative(polarizability : np.ndarray,
     if iteration == num_iterations - 1:
         print(f"Warning: MSP iterative solution did not converge within {num_iterations} iterations.")
 
-    return new_field.reshape(num_particles, dimensions)
+    return new_field
 
 def array_MSP_inverse(polarizability : np.ndarray,
                         external_field : np.ndarray,
@@ -170,7 +164,7 @@ def MSP_gradient_from_arrays(polarizability : np.ndarray,
     
     Notes
     -----
-    The gradient is returned as an array of shape (N, d, d) where N
+    The gradient is returned as an array of shape (N, d, d) where Nº
     """
 
     for coord in range(dimensions):
