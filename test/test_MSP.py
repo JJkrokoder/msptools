@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from msptools.MSP import solve_MSP_from_arrays, array_MSP_iterative, array_MSP_inverse
+from msptools.MSP import *
 from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
 
 np.random.seed(42)
@@ -143,4 +143,19 @@ class Test_MSP_inverse:
         assert np.allclose(iterative_field, inverse_field, rtol=1e-6), "Fields from iterative and inverse methods did not match."
 
 
-
+class Test_MSP_gradient_from_arrays:
+    
+    dimension = 3
+    wave_number = 1.0
+    
+    def test_zero_green_tensor_derivative(self):
+        num_particles = 2
+        external_gradient = np.random.rand(num_particles, self.dimension, self.dimension)
+        dipole_moments = np.random.rand(num_particles, self.dimension) + 1j * np.random.rand(num_particles, self.dimension)
+        zero_green_tensor_derivative = np.zeros((num_particles, num_particles, self.dimension, self.dimension, self.dimension))
+        
+        gradient = MSP_gradient_from_arrays(dipole_moments, external_gradient, self.wave_number, zero_green_tensor_derivative)
+        
+        assert np.allclose(gradient, external_gradient), "Gradient should equal external gradient when green tensor derivative is zero."
+    
+    

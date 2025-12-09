@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from msptools.GreenTensor_Electric import construct_green_tensor, pair_green_tensor
+from msptools.GreenTensor_Electric import *
 
 class Test_ConstructGreenTensor:
 
@@ -84,4 +84,39 @@ class Test_PairGreenTensor:
         assert np.allclose(g_ij, g_ff, atol=2/(4*np.pi * distance * norm_distance)), "Pair Green's tensor does not match far-field approximation."
 
 
+class Test_Pair_GreenTensor_Derivative:
 
+    wave_number = 2.0
+
+    def test_antisymmetry(self):
+        pos_i = np.array([0, 0, 0])
+        pos_j = np.array([1.5, 0, 0])
+
+        for coord in range(3):
+            der_g_ij = pair_green_tensor_derivative(pos_i, pos_j, coord, self.wave_number)
+            der_g_ji = pair_green_tensor_derivative(pos_j, pos_i, coord, self.wave_number)
+
+            assert np.allclose(der_g_ij, -der_g_ji), f"Derivative of pair Green's tensor is not antisymmetric for coordinate {coord}."
+    
+    @pytest.mark.parametrize("coordinate", [0, 1, 2])
+    def test_numerical_derivative(self, coordinate):
+        pos_i = np.array([0.5, 0.5, 0.5])
+        pos_j = np.array([1.5, 0, 0])
+        h = 1e-8
+
+        der_g_analytical = pair_green_tensor_derivative(pos_i, pos_j, coordinate, self.wave_number)
+
+        pos_i_plus = pos_i.copy()
+        pos_i_plus[coordinate] += h
+        g_plus = pair_green_tensor(pos_i_plus, pos_j, self.wave_number)
+
+        pos_i_minus = pos_i.copy()
+        pos_i_minus[coordinate] -= h
+        g_minus = pair_green_tensor(pos_i_minus, pos_j, self.wave_number)
+
+        der_g_numerical = (g_plus - g_minus) / (2 * h)
+
+        print(f"Analytical derivative (coord {coordinate}):\n", der_g_analytical)
+        print(f"Numerical derivative (coord {coordinate}):\n", der_g_numerical)
+
+        assert np.allclose(der_g_analytical, der_g_numerical, atol=1e-5), f"Analytical and numerical derivatives do not match for coordinate {coordinate}."
