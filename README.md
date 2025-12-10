@@ -1,5 +1,5 @@
-<p align="center">
-  <img src="assets/logo_1_white.svg" alt="Project Logo" width="200">
+<p align="left">
+  <img src="assets/logo_1_white.svg" alt="Project Logo" width="150">
 </p>
 
 # msptools
