@@ -14,17 +14,15 @@ class ParticleType:
 class SphereType(ParticleType):
     """Class representing spherical particles."""
 
-    def __init__(self, material: str, radius: float = 1.0, polarizability: float = None) -> None:
+    def __init__(self, material: str, radius: float, radius_unit: str, polarizability: float = None) -> None:
         self.radius = radius
+        self.radius_unit = radius_unit
         self.material = material
         if polarizability is not None:
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
-    def select_computation_method(self, frequency: float):
-        self.compute_method = Mie_electric_dipole_polarizability
-
-    def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        return self.compute_method(radius=self.radius,
+    def compute_polarizability(self, frequency: float, medium_permittivity: float):
+        self.polarizability = Mie_electric_dipole_polarizability(radius=self.radius,
                                   medium_permittivity=medium_permittivity,
                                   particle_permittivity=permittivity_ridx(frequency, self.material),
                                   wave_number=frequency_to_wavenumber_nm(frequency))

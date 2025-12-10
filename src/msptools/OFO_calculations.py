@@ -20,9 +20,15 @@ def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndar
     -------
     Forces :
         An array representing the force on each dipole.
+    
+    Notes
+    -----
+    The force is calculated using the formula:
+        F = (ε/2) * Re{ p · ∇E* }
+    where ε is the medium permittivity, p is the dipole moment, and ∇E* is the complex conjugate of the electric field gradient.
     """
 
-    forces = (medium_permittivity / 2) * np.real(np.einsum('ij,ikj->ik', dipole_moments, np.conj(field_gradient)))
+    forces = (medium_permittivity / 2) * np.real(np.einsum('im,inm->in', dipole_moments, np.conj(field_gradient)))
 
     return forces
 

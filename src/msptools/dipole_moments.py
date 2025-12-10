@@ -1,11 +1,10 @@
 import numpy as np
 from typing import List
 
-def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex],
+def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex] | float | List[float],
                                     electric_field : np.ndarray) -> np.ndarray:
     
-    dipole_moments = np.zeros_like(electric_field, dtype=complex)
- 
+    
     if isinstance(polarizability, (complex, float, int)):
         polarizability += 0j  # Ensure polarizability is treated as a complex number
         dipole_moments = polarizability * electric_field
@@ -13,8 +12,7 @@ def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[
         number_of_polarizabilities = len(polarizability) if isinstance(polarizability, list) else polarizability.shape[0]
         if number_of_polarizabilities != electric_field.shape[0]:
             raise ValueError("Polarizability and electric field must have the same number of elements.")
-        for i in range(number_of_polarizabilities):
-            dipole_moments[i,:] = polarizability[i] * electric_field[i,:]
+        dipole_moments = np.array([polarizability[i] * electric_field[i,:] for i in range(number_of_polarizabilities)])
     else:
         raise TypeError("Polarizability must be a complex number, float, int, list, or numpy array.")
 

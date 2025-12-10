@@ -37,13 +37,14 @@ class System:
             particle_types = [particle_types]
         self.particle_types = particle_types
         self.field = field
+        self.field.set_medium_permittivity(medium_permittivity)
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles()
         self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.get_frequency()) * np.sqrt(self.medium_permittivity)
 
         for ptype in self.particle_types:
-            ptype.select_computation_method(frequency = self.field.get_frequency())
+            ptype.compute_polarizability(frequency = self.field.get_frequency(), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: np.ndarray | List[float] | List[List[float]],
@@ -75,7 +76,7 @@ class System:
         else:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
-        polarizability = particle_type.compute_polarizability(self.field.get_frequency(), self.medium_permittivity)
+        polarizability = particle_type.polarizability
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
     def get_field_in_particles(self) -> np.ndarray:
@@ -97,6 +98,26 @@ class System:
                                    green_tensor=green_tensor,
                                    method='Iterative')
         return field_solution
+    
+    def get_field_gradient_in_particles(self, current_field: np.ndarray) -> np.ndarray:
+        """
+        Get the electric field gradient at specified positions by solving the Multiple Scattering Problem (MSP) for the gradient.
+
+        Returns
+        -------
+        np.ndarray
+            The electric field gradient at the specified positions.
+        """
+        
+        external_gradient = self.field.get_external_gradient_in_positions(self.particles.get_positions())
+        green_tensor_derivative = construct_green_tensor_gradient(self.particles.get_positions(), self.medium_wave_number_nm)
+        dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
+                                                         current_field) 
+        gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
+                                                     external_gradient=external_gradient,
+                                                     wave_number=self.medium_wave_number_nm,
+                                                     green_tensor_derivative=green_tensor_derivative)
+        return gradient_solution
     
     def set_position(self, index: int, position: np.ndarray[int, 3] | List[float]) -> None:
         """
@@ -126,30 +147,18 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self, positions : np.ndarray | List[float] | List[List[float]]) -> np.ndarray:
+    def compute_forces(self) -> np.ndarray:
         """
         Compute the optical forces on particles at specified positions.
-
-        Parameters
-        ----------
-        positions :
-            The position of the particles to compute forces on. This can be a 1D-three-element or 2D array-like.
 
         Returns
         -------
         np.ndarray
             The computed optical forces on the particles.
         """
-        
-        positions = np.array(positions)
 
-        if positions.ndim == 1:
-            positions = np.array([positions.flatten().tolist()])
-        elif positions.ndim != 2:
-            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
-
-        E_field = self.system.get_field_in_particles(positions)
-        E_grad = self.system.get_field_gradient_in_particles(positions)
+        E_field = self.system.get_field_in_particles()
+        E_grad = self.system.get_field_gradient_in_particles(E_field)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 

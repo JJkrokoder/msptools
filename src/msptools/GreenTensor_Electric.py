@@ -192,10 +192,38 @@ def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinat
 
     g_1 = G_1_function(r, wave_number)
     der_g_0 = G_0_derivative_function(r, wave_number) * R_vec[coordinate] / r
-    der_g_1 = G_1_derivative_function(r, wave_number) * R_vec[coordinate] / r**3
+    der_g_1 = G_1_derivative_function(r, wave_number) * R_vec[coordinate] / r
     R_cross = R_vec[:, None] @ R_vec[None, :]
     der_R_cross = v_cross_derivative(R_vec, coordinate)
 
     derivative_tensor = der_g_0 * np.eye(dimensions) + der_g_1 * R_cross + g_1 * der_R_cross
     
     return derivative_tensor 
+
+def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) -> np.ndarray:
+    """
+    Constructs the derivative of the Green's tensor for a given set of positions and wave number.
+
+    Parameters
+    ----------
+    positions : np.ndarray
+        Array of shape (num_particles, dimension) containing the positions of the particles.
+    wave_number : float
+        The wave number.
+
+    Returns
+    -------
+    np.ndarray
+        Derivative of Green's tensor of shape (num_particles, num_particles, dimension, dimension, dimension).
+    """
+    
+    num_particles, dimensions = positions.shape
+    green_tensor_derivative = np.zeros((num_particles, num_particles, dimensions, dimensions, dimensions), dtype=np.complex128)
+
+    for i in range(num_particles):
+        for j in range(i + 1, num_particles):
+            for coord in range(dimensions):
+                green_tensor_derivative[i, j, coord, :, :] = pair_green_tensor_derivative(positions[i], positions[j], coord, wave_number)
+                green_tensor_derivative[j, i, coord, :, :] = -green_tensor_derivative[i, j, coord, :, :]
+    return green_tensor_derivative
+    

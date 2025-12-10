@@ -80,21 +80,15 @@ def array_MSP_iterative(polarizability : np.ndarray,
         The solution to the MSP.
     """
 
-    num_particles = external_field.shape[0]
-    dimensions = external_field.shape[1]
-
-    green_tensor_matrix = green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
-    external_field_array = external_field.reshape(num_particles * dimensions, 1)
-    old_field = external_field_array.copy()
+    old_field = external_field.copy()
 
     for iteration in range(num_iterations):
         
-        dipole_moments = calculate_dipole_moments_linear(polarizability, old_field.reshape(num_particles, dimensions))
-        dipole_moments = dipole_moments.reshape(num_particles*dimensions, 1)
-        scattered_field = wave_number**2 * green_tensor_matrix @ dipole_moments
-        new_field = external_field_array + scattered_field
+        dipole_moments = calculate_dipole_moments_linear(polarizability, old_field)
+        scattered_field = wave_number**2 * np.einsum('ijmn,jn->im', green_tensor, dipole_moments)
+        new_field = external_field + scattered_field
 
-        if np.any(np.abs(new_field)/np.abs(external_field_array) > 1e6 ):
+        if np.any(np.abs(new_field)/np.abs(external_field) > 1e6 ):
             raise ValueError("The new field is significantly larger than the external field, indicating potential divergence in the iterative method.")
 
         if np.allclose(new_field, old_field, rtol=tolerance):
@@ -104,7 +98,7 @@ def array_MSP_iterative(polarizability : np.ndarray,
     if iteration == num_iterations - 1:
         print(f"Warning: MSP iterative solution did not converge within {num_iterations} iterations.")
 
-    return new_field.reshape(num_particles, dimensions)
+    return new_field
 
 def array_MSP_inverse(polarizability : np.ndarray,
                         external_field : np.ndarray,
@@ -142,8 +136,7 @@ def array_MSP_inverse(polarizability : np.ndarray,
         total_field = MSP_matrix_inv @ external_field_array
         return total_field.reshape(num_particles, dimensions)
 
-def MSP_gradient_from_arrays(polarizability : np.ndarray,
-                             MS_field : np.ndarray,
+def MSP_gradient_from_arrays(dipole_moments: np.ndarray,
                              external_gradient : np.ndarray,
                              wave_number : float,
                              green_tensor_derivative : np.ndarray) -> np.ndarray:
@@ -170,16 +163,11 @@ def MSP_gradient_from_arrays(polarizability : np.ndarray,
     
     Notes
     -----
-    The gradient is returned as an array of shape (N, d, d) where N
+    The gradient is returned as an array of shape (N, d, d) where N is the number of particles and d is the dimensionality.
     """
 
-    for coord in range(dimensions):
-        green_tensor_derivative_matrix = green_tensor_derivative[:, :, coord, :, :].transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
-        term1 = wave_number**2 * green_tensor_derivative_matrix @ polarizability_to_matrix(polarizability, num_particles, dimensions) @ field_solution_array
-        term2 = external_gradient[:, coord, :].reshape(num_particles * dimensions, 1)
-        total_derivative = term2 + term1
-        MSP_matrix = np.eye(num_particles * dimensions) - wave_number**2 * green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions) @ polarizability_to_matrix(polarizability, num_particles, dimensions)
-        MSP_matrix_inv = np.linalg.inv(MSP_matrix)
-        gradient[:, coord, :] = (MSP_matrix_inv @ total_derivative).reshape(num_particles, dimensions)
+    scattered_gradient = wave_number**2 * np.einsum('ijcmn,jn->icm', green_tensor_derivative, dipole_moments)
+    
+    MSP_gradient = external_gradient + scattered_gradient
 
-    return gradient
+    return MSP_gradient

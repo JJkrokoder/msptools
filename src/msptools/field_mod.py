@@ -109,6 +109,17 @@ class Field:
             raise NotImplementedError("The method 'get_external_gradient_in_positions' must be implemented in subclasses.")
         else:
             return self.external_gradient_function(positions)
+    
+    def set_medium_permittivity(self, medium_permittivity: float) -> None:
+        """
+        Method to set the medium permittivity for the field.
+
+        Parameters
+        ----------
+        medium_permittivity :
+            The permittivity of the medium in which the field propagates.
+        """
+        self.medium_permittivity = medium_permittivity
         
 
     
@@ -150,19 +161,24 @@ class PlaneWaveField(Field):
         self.amplitude = amplitude
         self.polarization = np.array(polarization) / np.linalg.norm(np.array(polarization))
         self.direction = np.array(direction) / np.linalg.norm(np.array(direction))
+
+        if hasattr(self, 'medium_permittivity'):
+            wave_number_nm_medium = self.wave_number_um/1000 * np.sqrt(self.medium_permittivity)
+        else:
+            wave_number_nm_medium = self.wave_number_um/1000  # Convert um^-1 to nm^-1
         
         self.external_field_function = lambda positions: plane_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=self.wave_number_um/1000  # Convert um^-1 to nm^-1
+            k_magnitude=wave_number_nm_medium
         )
 
         self.external_gradient_function = lambda positions: plane_wave_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=self.wave_number_um/1000  # Convert um^-1 to nm^-1
+            k_magnitude=wave_number_nm_medium
         )
     
     def get_direction(self) -> np.ndarray:
