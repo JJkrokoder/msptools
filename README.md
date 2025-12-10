@@ -1,8 +1,6 @@
 <p align="left">
-  <img src="assets/logo_1_white.svg" alt="Project Logo" width="150">
+  <img src="assets/logo_1_white.svg" alt="Project Logo" width="200">
 </p>
-
-# msptools
 
 ## Overview
 
