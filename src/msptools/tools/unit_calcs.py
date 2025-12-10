@@ -177,11 +177,11 @@ def frequency_to_wavenumber_nm(frequency_eV: float | np.ndarray) -> float | np.n
 
 def get_multiplier_nanometers(unit: str) -> float:
     """
-    Get the multiplier to convert a given unit to nanometers (nm).
+    Get the multiplier to convert a given length unit to nanometers (nm).
 
     Parameters:
         unit:
-            The unit prefix to be converted to nanometers (nm).
+            The length unit to be converted to nanometers (nm).
 
     Returns:
         Multiplier to convert the given unit to nanometers (nm).

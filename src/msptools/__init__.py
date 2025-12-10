@@ -37,13 +37,14 @@ class System:
             particle_types = [particle_types]
         self.particle_types = particle_types
         self.field = field
+        self.field.set_medium_permittivity(medium_permittivity)
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles()
         self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.get_frequency()) * np.sqrt(self.medium_permittivity)
 
         for ptype in self.particle_types:
-            ptype.select_computation_method(frequency = self.field.get_frequency())
+            ptype.compute_polarizability(frequency = self.field.get_frequency(), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: np.ndarray | List[float] | List[List[float]],
@@ -75,7 +76,7 @@ class System:
         else:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
-        polarizability = particle_type.compute_polarizability(self.field.get_frequency(), self.medium_permittivity)
+        polarizability = particle_type.polarizability
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
     def get_field_in_particles(self) -> np.ndarray:
@@ -146,30 +147,18 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self, positions : np.ndarray | List[float] | List[List[float]]) -> np.ndarray:
+    def compute_forces(self) -> np.ndarray:
         """
         Compute the optical forces on particles at specified positions.
-
-        Parameters
-        ----------
-        positions :
-            The position of the particles to compute forces on. This can be a 1D-three-element or 2D array-like.
 
         Returns
         -------
         np.ndarray
             The computed optical forces on the particles.
         """
-        
-        positions = np.array(positions)
 
-        if positions.ndim == 1:
-            positions = np.array([positions.flatten().tolist()])
-        elif positions.ndim != 2:
-            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
-
-        E_field = self.system.get_field_in_particles(positions)
-        E_grad = self.system.get_field_gradient_in_particles(positions, E_field)
+        E_field = self.system.get_field_in_particles()
+        E_grad = self.system.get_field_gradient_in_particles(E_field)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 
