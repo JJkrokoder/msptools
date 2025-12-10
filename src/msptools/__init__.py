@@ -98,6 +98,26 @@ class System:
                                    method='Iterative')
         return field_solution
     
+    def get_field_gradient_in_particles(self, current_field: np.ndarray) -> np.ndarray:
+        """
+        Get the electric field gradient at specified positions by solving the Multiple Scattering Problem (MSP) for the gradient.
+
+        Returns
+        -------
+        np.ndarray
+            The electric field gradient at the specified positions.
+        """
+        
+        external_gradient = self.field.get_external_gradient_in_positions(self.particles.get_positions())
+        green_tensor_derivative = construct_green_tensor_gradient(self.particles.get_positions(), self.medium_wave_number_nm)
+        dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
+                                                         current_field) 
+        gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
+                                                     external_gradient=external_gradient,
+                                                     wave_number=self.medium_wave_number_nm,
+                                                     green_tensor_derivative=green_tensor_derivative)
+        return gradient_solution
+    
     def set_position(self, index: int, position: np.ndarray[int, 3] | List[float]) -> None:
         """
         Set the position of a particle at a specified index.
@@ -149,7 +169,7 @@ class ForceCalculator:
             raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
 
         E_field = self.system.get_field_in_particles(positions)
-        E_grad = self.system.get_field_gradient_in_particles(positions)
+        E_grad = self.system.get_field_gradient_in_particles(positions, E_field)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 

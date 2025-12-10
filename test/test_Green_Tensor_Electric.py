@@ -120,3 +120,21 @@ class Test_Pair_GreenTensor_Derivative:
         print(f"Numerical derivative (coord {coordinate}):\n", der_g_numerical)
 
         assert np.allclose(der_g_analytical, der_g_numerical, atol=1e-5), f"Analytical and numerical derivatives do not match for coordinate {coordinate}."
+
+
+class Test_ConstructGreenTensorGradient:
+    
+    positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    wave_number = 1.0
+    num_particles = positions.shape[0]
+    dimensions = positions.shape[1]
+    green_tensor_gradient = construct_green_tensor_gradient(positions, wave_number)
+
+    def test_shape(self):
+        expected_shape = (self.num_particles, self.num_particles, self.dimensions, self.dimensions, self.dimensions)
+        assert self.green_tensor_gradient.shape == expected_shape, "Green tensor gradient shape mismatch."
+
+    def test_antisymmetry(self):
+        anti_transpose = -self.green_tensor_gradient.transpose(1, 0, 2, 3, 4)
+        assert np.allclose(self.green_tensor_gradient, anti_transpose), "Green tensor gradient is not antisymmetric with respect to particle indices."
+
