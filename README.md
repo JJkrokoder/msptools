@@ -1,3 +1,5 @@
+![Project Logo](assets/logo_1_white.svg)
+
 # msptools
 
 ## Overview
