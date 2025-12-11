@@ -3,7 +3,7 @@ import msptools as msptools
 import matplotlib.pyplot as plt
 
 radius_nm = 10
-wavelength_nm = 500
+wavelength_nm = 532
 medium_permittivity = 1
 #logarithimic spacing
 x=np.logspace(np.log10(2.02*radius_nm), np.log10(7*radius_nm), 100)

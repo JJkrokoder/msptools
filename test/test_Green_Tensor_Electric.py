@@ -19,6 +19,58 @@ class Test_ConstructGreenTensor:
         for i in range(self.num_particles):
             assert np.allclose(self.green_tensor[i, i], np.zeros((self.dimensions, self.dimensions))), f"Diagonal block {i} is not a zero matrix."
 
+class Test_G_funtions:
+    
+    wave_number = 2.0
+
+    def test_G_0_farfield(self):
+        distance = 1e5 / self.wave_number
+        g0 = G_0_function(distance, self.wave_number)
+        expected_g0 = np.exp(1j * self.wave_number * distance) / (4 * np.pi * distance)
+        assert np.allclose(g0, expected_g0, rtol=1e-5), "G_0 function does not match far-field approximation."
+    
+    def test_G_1_farfield(self):
+        distance = 1e5 / self.wave_number
+        g1 = G_1_function(distance, self.wave_number)
+        expected_g1 = -np.exp(1j * self.wave_number * distance) / (4 * np.pi * distance**3)
+        assert np.allclose(g1, expected_g1, rtol=1e-5), "G_1 function does not match far-field approximation."
+
+    def test_G_0_nearfield(self):
+        distance = 1e-5 / self.wave_number
+        g0 = G_0_function(distance, self.wave_number)
+        expected_g0 = -1 / (4 * np.pi * self.wave_number**2 * distance**3)
+        assert np.allclose(g0, expected_g0, rtol=1e-5), "G_0 function does not match near-field approximation."
+    
+    def test_G_1_nearfield(self):
+        distance = 1e-5 / self.wave_number
+        g1 = G_1_function(distance, self.wave_number)
+        expected_g1 = 3 / (4 * np.pi * self.wave_number**2 * distance**5)
+        assert np.allclose(g1, expected_g1, rtol=1e-5), "G_1 function does not match near-field approximation."
+    
+    def test_G_0_derivative_farfield(self):
+        distance = 1e5 / self.wave_number
+        der_g0 = G_0_derivative_function(distance, self.wave_number)
+        expected_der_g0 = 1j * self.wave_number * np.exp(1j * self.wave_number * distance) / (4 * np.pi * distance)
+        assert np.allclose(der_g0, expected_der_g0, rtol=1e-5), "Derivative of G_0 function does not match far-field approximation."
+    
+    def test_G_0_derivative_nearfield(self):
+        distance = 1e-5 / self.wave_number
+        der_g0 = G_0_derivative_function(distance, self.wave_number)
+        expected_der_g0 = 3 / (4 * np.pi * self.wave_number**2 * distance**4)
+        assert np.allclose(der_g0, expected_der_g0, rtol=1e-5), "Derivative of G_0 function does not match near-field approximation."
+    
+    def test_G_1_derivative_farfield(self):
+        distance = 1e5 / self.wave_number
+        der_g1 = G_1_derivative_function(distance, self.wave_number)
+        expected_der_g1 = -self.wave_number * np.exp(1j * self.wave_number * distance) / (4 * np.pi * distance**3) * (1j)
+        assert np.allclose(der_g1, expected_der_g1, rtol=1e-5), "Derivative of G_1 function does not match far-field approximation."
+    
+    def test_G_1_derivative_nearfield(self):
+        distance = 1e-5 / self.wave_number
+        der_g1 = G_1_derivative_function(distance, self.wave_number)
+        expected_der_g1 = -15 / (4 * np.pi * self.wave_number**2 * distance**6)
+        assert np.allclose(der_g1, expected_der_g1, rtol=1e-5), "Derivative of G_1 function does not match near-field approximation."
+    
 
 class Test_PairGreenTensor:
 
@@ -61,7 +113,6 @@ class Test_PairGreenTensor:
         rotated_g_ij = pair_green_tensor(rotation @ pos_i, rotation @ pos_j, self.wave_number)
 
         assert np.allclose(rotation @ g_ij @ rotation.T, rotated_g_ij), "Pair Green's tensor is not rotationally invariant."
-    
 
 
     @pytest.mark.parametrize("norm_distance", [5, 1e2, 1e5])
@@ -82,6 +133,24 @@ class Test_PairGreenTensor:
         g_ff = g0_ff * np.eye(3) + g1_ff * (R_vec[:, None] @ R_vec[None, :]) 
 
         assert np.allclose(g_ij, g_ff, atol=2/(4*np.pi * distance * norm_distance)), "Pair Green's tensor does not match far-field approximation."
+    
+    @pytest.mark.parametrize("unit_vector", [
+        np.array([1, 0, 0]),
+        np.array([0, 1, 0]),
+        np.array([0, 0, 1])])
+    def test_nearfield_consistency(self, unit_vector):
+        distance = 1e-5 / self.wave_number
+        pos_i = np.array([0, 0, 0])
+        pos_j = distance * unit_vector
+
+        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+
+        g0_nf = -1 / (4 * np.pi * self.wave_number**2 * distance**3)
+        g1_nf = 3 / (4 * np.pi * self.wave_number**2 * distance**5)
+        R_vec = pos_i - pos_j
+        g_nf = g0_nf * np.eye(3) + g1_nf * (R_vec[:, None] @ R_vec[None, :])
+
+        assert np.allclose(g_ij, g_nf, rtol=1e-5), "Pair Green's tensor does not match near-field approximation."
 
 
 class Test_Pair_GreenTensor_Derivative:
