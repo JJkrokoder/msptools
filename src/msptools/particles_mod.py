@@ -67,7 +67,7 @@ class Particles:
             A 1D array representing the position of the specified particle.
         """
 
-        return self.positions[index]
+        return np.array(self.positions[index])
     
     def clean_particles(self) -> None:
         """

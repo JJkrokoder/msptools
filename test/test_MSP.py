@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from msptools.MSP import *
 from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
-
+from msptools.GreenTensor_Electric import construct_green_tensor
 np.random.seed(42)
 np.set_printoptions(precision=3, suppress=True)
 
@@ -142,6 +142,30 @@ class Test_MSP_inverse:
 
         assert np.allclose(iterative_field, inverse_field, rtol=1e-6), "Fields from iterative and inverse methods did not match."
 
+class Test_MSP_examples:
+
+    @pytest.mark.parametrize("x", [5.0, 10.0, 20.0])
+    def test_2_particles_at_z0(self, x):
+
+        polarizability = 1.0 + 0.5j
+        external_field = np.array([[1, 0, 0],
+                                   [1, 0, 0]])
+        num_particles = external_field.shape[0]
+        dimension = external_field.shape[1]
+        wave_number = 1.0
+
+        positions = np.array([[0, 0, 0],
+                              [x, 0, 0]])
+        
+        green_tensor = construct_green_tensor(positions, wave_number)
+
+        total_field = solve_MSP_from_arrays(polarizability, external_field, wave_number, green_tensor)
+
+        expected_field_particle_1 = external_field[0] / (1 - wave_number**2 * polarizability * green_tensor[0,1, 0,0])
+        expected_field_particle_2 = external_field[1] / (1 - wave_number**2 * polarizability * green_tensor[1,0, 0,0])
+
+        assert np.allclose(total_field[0], expected_field_particle_1), "Total field at particle 1 did not match expected value."
+        assert np.allclose(total_field[1], expected_field_particle_2), "Total field at particle 2 did not match expected value."
 
 class Test_MSP_gradient_from_arrays:
     
