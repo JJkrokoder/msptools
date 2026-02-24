@@ -214,5 +214,60 @@ class PlaneWaveField(Field):
         """
         return self.amplitude
     
+class StandingWaveField(Field):
+    """Class representing a standing wave electromagnetic field."""
+    
+    def __init__(self,
+                 direction: List[float] | np.ndarray,
+                 amplitude: float | complex,
+                 polarization: List[float] | np.ndarray,
+                 **kwargs) -> None:
+        """
+        Initialize a StandingWaveField object by specifying its direction, amplitude and frequency or wavelength.
 
+        Parameters
+        ----------
+        direction :
+            The propagation direction of the standing wave as a 3-element list. It is normalized by default.
+        amplitude :
+            The amplitude of the standing wave.
+        polarization :
+            The polarization vector of the standing wave. It is normalized by default.
+        frequency :
+            The frequency of the standing wave.
+        frequency_unit :
+            The unit of the frequency.
+        wavelength :
+            The wavelength of the standing wave.
+        wavelength_unit :
+            The unit of the wavelength.
+
+        Notes
+        -----
+        positions are considered to be in same units as wavelength (default nm).
+        """
+
+        super().__init__(**kwargs)
+        self.amplitude = amplitude
+        self.polarization = np.array(polarization) / np.linalg.norm(np.array(polarization))
+        self.direction = np.array(direction) / np.linalg.norm(np.array(direction))
+
+        if hasattr(self, 'medium_permittivity'):
+            wave_number_nm_medium = self.wave_number_um/1000 * np.sqrt(self.medium_permittivity)
+        else:
+            wave_number_nm_medium = self.wave_number_um/1000  # Convert um^-1 to nm^-1
+        
+        self.external_field_function = lambda positions: standing_wave_function(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=wave_number_nm_medium
+        )
+
+        self.external_gradient_function = lambda positions: standing_wave_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=wave_number_nm_medium
+        )
 
