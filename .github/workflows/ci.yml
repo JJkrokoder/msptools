@@ -19,7 +19,7 @@ jobs:
         cache-environment: true
         init-shell: bash
 
-    - name: Install project (editable)
+    - name: Install project
       run: |
         pip install .
     - name: Run tests with pytest
