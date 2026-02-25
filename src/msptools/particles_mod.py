@@ -1,5 +1,15 @@
 from typing import List
-import numpy as np
+import logging
+
+logging.basicConfig(level=logging.INFO)
+try:
+    import cupy as np
+
+    logging.log(logging.INFO, "Using CUDA backend")
+except:
+    logging.log(logging.INFO, "Using Fallback numpy backend")
+    import numpy as np
+
 from .tools.unit_calcs import get_multiplier_nanometers
 
 
@@ -14,10 +24,9 @@ class Particles:
         self.positions = []
         self.polarizabilities = []
 
-
-    def add_particles(self,
-                     positions: List[List[float]],
-                     polarizabilities: complex | List[complex]) -> None:
+    def add_particles(
+        self, positions: List[List[float]], polarizabilities: complex | List[complex]
+    ) -> None:
         """
         Add particles to the system at specified positions and with specified polarizabilities.
 
@@ -30,8 +39,7 @@ class Particles:
         positions_unit :
             The unit of the positions provided.
         """
-
-        self.positions.extend(positions)
+        self.positions.extend([[float(ii) for ii in i] for i in positions])
 
         if isinstance(polarizabilities, list):
             self.polarizabilities.extend(polarizabilities)
@@ -47,11 +55,12 @@ class Particles:
         np.ndarray
             An array of shape (N, 3) where N is the number of particles.
         """
+        import numpy
 
+        print("Positions:", self.positions)
         positions = np.array(self.positions)
-        
         return positions
-    
+
     def get_position(self, index: int) -> np.ndarray:
         """
         Get the position of a specific particle by its index.
@@ -68,7 +77,7 @@ class Particles:
         """
 
         return np.array(self.positions[index])
-    
+
     def clean_particles(self) -> None:
         """
         Remove all particles' data from the system.
@@ -76,7 +85,6 @@ class Particles:
 
         self.positions = []
         self.polarizabilities = []
-
 
     def _calculate_polarizabilities(self) -> None:
         """
@@ -100,6 +108,5 @@ class Particles:
         position :
             The new position of the particle. This can be a 1D-three-element array-like.
         """
-        
-        self.positions[index] = position
 
+        self.positions[index] = [float(ii) for ii in position]

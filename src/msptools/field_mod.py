@@ -1,16 +1,26 @@
 from typing import List
-import numpy as np
+import logging
+
+logging.basicConfig(level=logging.INFO)
+try:
+    import cupy as np
+
+    logging.log(logging.INFO, "Using CUDA backend")
+except:
+    logging.log(logging.INFO, "Using Fallback numpy backend")
+    import numpy as np
+
 from .tools.unit_calcs import *
 from .tools.field_tools import *
 
 
 class Field:
     """Class representing an electromagnetic field."""
-    
-    def __init__(self, **kwargs ) -> None:
+
+    def __init__(self, **kwargs) -> None:
         """
         Initialize a Field object by specifying its frequency or wavelength.
-        
+
         Parameters
         ----------
         frequency :
@@ -30,26 +40,30 @@ class Field:
         if frequency is None and wavelength is None:
             raise ValueError("Either 'frequency' or 'wavelength' must be specified.")
         elif frequency is not None and wavelength is not None:
-            raise ValueError("Only one of 'frequency' or 'wavelength' should be specified.")
+            raise ValueError(
+                "Only one of 'frequency' or 'wavelength' should be specified."
+            )
         elif frequency is not None:
             if frequency_unit is None:
                 raise ValueError("'frequency' specified but 'frequency_unit' is None.")
             else:
                 self.frequency_eV = frequency_to_eV(frequency, frequency_unit)
                 self.wave_number_um = frequency_to_wavenumber_um(self.frequency_eV)
-                self.wavelength_nm = 2*np.pi*1000/self.wave_number_um
+                self.wavelength_nm = 2 * np.pi * 1000 / self.wave_number_um
         else:
             if wavelength_unit is None:
-                raise ValueError("'wavelength' specified but 'wavelength_unit' is None.")
-            else:  
+                raise ValueError(
+                    "'wavelength' specified but 'wavelength_unit' is None."
+                )
+            else:
                 wavelength_nm = wavelength_to_nm(wavelength, wavelength_unit)
                 self.wavelength_nm = wavelength_nm
                 self.frequency_eV = nm_to_eV(wavelength_nm)
-                self.wave_number_um = 2*np.pi*1000/self.wavelength_nm
+                self.wave_number_um = 2 * np.pi * 1000 / self.wavelength_nm
 
     def __str__(self):
         return f"Field: frequency = {self.frequency:.4f} eV, wavelength = {self.wavelength_nm:.2f} nm"
-    
+
     def get_frequency(self) -> float:
         """
         Method to get the frequency of the field in eV.
@@ -60,7 +74,7 @@ class Field:
             The frequency of the field in eV.
         """
         return self.frequency_eV
-    
+
     def get_wavelength(self) -> float:
         """
         Method to get the wavelength of the field in nanometers (nm).
@@ -71,7 +85,6 @@ class Field:
             The wavelength of the field in nanometers (nm).
         """
         return self.wavelength_nm
-
 
     def get_external_field_in_positions(self, positions: np.ndarray) -> np.ndarray:
         """
@@ -87,10 +100,12 @@ class Field:
             The external electric field at the specified positions.
         """
         if self.external_field_function is None:
-            raise NotImplementedError("The method 'get_external_field_in_positions' must be implemented in subclasses.")
+            raise NotImplementedError(
+                "The method 'get_external_field_in_positions' must be implemented in subclasses."
+            )
         else:
             return self.external_field_function(positions)
-    
+
     def get_external_gradient_in_positions(self, positions: np.ndarray) -> np.ndarray:
         """
         Method to get the external electric field gradient at specified positions.
@@ -106,10 +121,12 @@ class Field:
             The external electric field gradient at the specified positions.
         """
         if self.external_gradient_function is None:
-            raise NotImplementedError("The method 'get_external_gradient_in_positions' must be implemented in subclasses.")
+            raise NotImplementedError(
+                "The method 'get_external_gradient_in_positions' must be implemented in subclasses."
+            )
         else:
             return self.external_gradient_function(positions)
-    
+
     def set_medium_permittivity(self, medium_permittivity: float) -> None:
         """
         Method to set the medium permittivity for the field.
@@ -120,18 +137,18 @@ class Field:
             The permittivity of the medium in which the field propagates.
         """
         self.medium_permittivity = medium_permittivity
-        
 
-    
 
 class PlaneWaveField(Field):
     """Class representing a plane wave electromagnetic field."""
-    
-    def __init__(self,
-                 direction: List[float] | np.ndarray,
-                 amplitude: float | complex,
-                 polarization: List[float] | np.ndarray,
-                 **kwargs) -> None:
+
+    def __init__(
+        self,
+        direction: List[float] | np.ndarray,
+        amplitude: float | complex,
+        polarization: List[float] | np.ndarray,
+        **kwargs,
+    ) -> None:
         """
         Initialize a PlaneWaveField object by specifying its direction, amplitude and frequency or wavelength.
 
@@ -159,28 +176,32 @@ class PlaneWaveField(Field):
 
         super().__init__(**kwargs)
         self.amplitude = amplitude
-        self.polarization = np.array(polarization) / np.linalg.norm(np.array(polarization))
+        self.polarization = np.array(polarization) / np.linalg.norm(
+            np.array(polarization)
+        )
         self.direction = np.array(direction) / np.linalg.norm(np.array(direction))
 
-        if hasattr(self, 'medium_permittivity'):
-            wave_number_nm_medium = self.wave_number_um/1000 * np.sqrt(self.medium_permittivity)
+        if hasattr(self, "medium_permittivity"):
+            wave_number_nm_medium = (
+                self.wave_number_um / 1000 * np.sqrt(self.medium_permittivity)
+            )
         else:
-            wave_number_nm_medium = self.wave_number_um/1000  # Convert um^-1 to nm^-1
-        
+            wave_number_nm_medium = self.wave_number_um / 1000  # Convert um^-1 to nm^-1
+
         self.external_field_function = lambda positions: plane_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
-            positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            positions=positions,
+            k_magnitude=wave_number_nm_medium,
         )
 
         self.external_gradient_function = lambda positions: plane_wave_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
-            positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            positions=positions,
+            k_magnitude=wave_number_nm_medium,
         )
-    
+
     def get_direction(self) -> np.ndarray:
         """
         Method to get the propagation direction of the plane wave.
@@ -191,7 +212,7 @@ class PlaneWaveField(Field):
             The normalized propagation direction of the plane wave.
         """
         return self.direction
-    
+
     def get_polarization(self) -> np.ndarray:
         """
         Method to get the polarization vector of the plane wave.
@@ -202,7 +223,7 @@ class PlaneWaveField(Field):
             The normalized polarization vector of the plane wave.
         """
         return self.polarization
-    
+
     def get_amplitude(self) -> float | complex:
         """
         Method to get the amplitude of the plane wave.
@@ -213,15 +234,18 @@ class PlaneWaveField(Field):
             The amplitude of the plane wave.
         """
         return self.amplitude
-    
+
+
 class StandingWaveField(Field):
     """Class representing a standing wave electromagnetic field."""
-    
-    def __init__(self,
-                 direction: List[float] | np.ndarray,
-                 amplitude: float | complex,
-                 polarization: List[float] | np.ndarray,
-                 **kwargs) -> None:
+
+    def __init__(
+        self,
+        direction: List[float] | np.ndarray,
+        amplitude: float | complex,
+        polarization: List[float] | np.ndarray,
+        **kwargs,
+    ) -> None:
         """
         Initialize a StandingWaveField object by specifying its direction, amplitude and frequency or wavelength.
 
@@ -249,25 +273,28 @@ class StandingWaveField(Field):
 
         super().__init__(**kwargs)
         self.amplitude = amplitude
-        self.polarization = np.array(polarization) / np.linalg.norm(np.array(polarization))
+        self.polarization = np.array(polarization) / np.linalg.norm(
+            np.array(polarization)
+        )
         self.direction = np.array(direction) / np.linalg.norm(np.array(direction))
 
-        if hasattr(self, 'medium_permittivity'):
-            wave_number_nm_medium = self.wave_number_um/1000 * np.sqrt(self.medium_permittivity)
+        if hasattr(self, "medium_permittivity"):
+            wave_number_nm_medium = (
+                self.wave_number_um / 1000 * np.sqrt(self.medium_permittivity)
+            )
         else:
-            wave_number_nm_medium = self.wave_number_um/1000  # Convert um^-1 to nm^-1
-        
+            wave_number_nm_medium = self.wave_number_um / 1000  # Convert um^-1 to nm^-1
+
         self.external_field_function = lambda positions: standing_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
-            positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            positions=positions,
+            k_magnitude=wave_number_nm_medium,
         )
 
         self.external_gradient_function = lambda positions: standing_wave_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
-            positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            positions=positions,
+            k_magnitude=wave_number_nm_medium,
         )
-

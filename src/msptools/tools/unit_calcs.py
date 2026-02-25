@@ -1,5 +1,15 @@
 from scipy.constants import c, h, e, hbar
-import numpy as np
+import logging
+
+logging.basicConfig(level=logging.INFO)
+try:
+    import cupy as np
+
+    logging.log(logging.INFO, "Using CUDA backend")
+except:
+    logging.log(logging.INFO, "Using Fallback numpy backend")
+    import numpy as np
+
 
 multipliers = {
     "a": 1e-18,
@@ -21,21 +31,24 @@ multipliers = {
     "E": 1e18,
 }
 
-def frequency_to_eV(frequency: float | np.ndarray, frequency_unit: str) -> float | np.ndarray:
+
+def frequency_to_eV(
+    frequency: float | np.ndarray, frequency_unit: str
+) -> float | np.ndarray:
     """
     Convert frequency to energy in electron volts / hbar (eV).
-    
+
     Parameters:
         frequency:
             Frequency value to be converted.
         frequency_unit:
-            Unit of the frequency value. Supported units are Hertz (Hz) multipliers 
+            Unit of the frequency value. Supported units are Hertz (Hz) multipliers
             from atto (a, 1e-18) to exa (E, 1e18) and electron volts multipliers from
             atto (a, 1e-18) to exa (E, 1e18).
 
     Returns:
         Frequency in electron volts / hbar (eV).
-    
+
     Notes:
         Supported multipliers for Hertz (Hz) and electron volts (eV) are:
         - atto (a, 1e-18)
@@ -57,28 +70,29 @@ def frequency_to_eV(frequency: float | np.ndarray, frequency_unit: str) -> float
         - Exa (E, 1e18)
     """
 
-    if frequency_unit.endswith('Hz'):
+    if frequency_unit.endswith("Hz"):
         factor = multipliers.get(frequency_unit[:-2], 1)
         frequency_in_eV = frequency * factor * hbar / e
-    elif frequency_unit.endswith('eV'):
+    elif frequency_unit.endswith("eV"):
         factor = multipliers.get(frequency_unit[:-2], 1)
         frequency_in_eV = frequency * factor
     else:
         raise ValueError(f"Unsupported frequency unit: {frequency_unit}")
 
-
     return frequency_in_eV
 
 
-def wavelength_to_nm(wavelength: float | np.ndarray, wavelength_unit: str) -> float | np.ndarray:
+def wavelength_to_nm(
+    wavelength: float | np.ndarray, wavelength_unit: str
+) -> float | np.ndarray:
     """
     Convert wavelength to nanometers (nm).
-    
+
     Parameters:
         wavelength:
             Wavelength value to be converted.
         wavelength_unit:
-            Unit of the wavelength value. Supported units are meters (m) multipliers 
+            Unit of the wavelength value. Supported units are meters (m) multipliers
             from atto (a, 1e-18) to exa (E, 1e18).
 
     Returns:
@@ -105,7 +119,7 @@ def wavelength_to_nm(wavelength: float | np.ndarray, wavelength_unit: str) -> fl
         - Exa (E, 1e18)
     """
 
-    if wavelength_unit.endswith('m'):
+    if wavelength_unit.endswith("m"):
         factor = multipliers.get(wavelength_unit[:-1], 1)
         wavelength_in_nm = wavelength * factor * 1e9
     else:
@@ -113,10 +127,11 @@ def wavelength_to_nm(wavelength: float | np.ndarray, wavelength_unit: str) -> fl
 
     return wavelength_in_nm
 
+
 def nm_to_eV(wavelength_nm: float | np.ndarray) -> float | np.ndarray:
     """
     Convert wavelength in nanometers (nm) to frequency in electron volts / hbar (eV).
-    
+
     Parameters:
         wavelength_nm:
             Wavelength value in nanometers (nm).
@@ -128,10 +143,11 @@ def nm_to_eV(wavelength_nm: float | np.ndarray) -> float | np.ndarray:
     frequency_eV = h * c / wavelength_m / e
     return frequency_eV
 
+
 def eV_to_nm(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavelength in nanometers (nm).
-    
+
     Parameters:
         frequency_eV:
             Frequency value in electron volts / hbar (eV).
@@ -146,7 +162,7 @@ def eV_to_nm(frequency_eV: float | np.ndarray) -> float | np.ndarray:
 def frequency_to_wavenumber_um(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavenumber in inverse micrometers (1/µm).
-    
+
     Parameters:
         frequency_eV:
             Frequency value in electron volts / hbar (eV).
@@ -159,10 +175,11 @@ def frequency_to_wavenumber_um(frequency_eV: float | np.ndarray) -> float | np.n
     wavenumber_um = wavenumber_m / 1e6
     return wavenumber_um
 
+
 def frequency_to_wavenumber_nm(frequency_eV: float | np.ndarray) -> float | np.ndarray:
     """
     Convert frequency in electron volts / hbar (eV) to wavenumber in inverse nanometers (1/nm).
-    
+
     Parameters:
         frequency_eV:
             Frequency value in electron volts / hbar (eV).
@@ -174,6 +191,7 @@ def frequency_to_wavenumber_nm(frequency_eV: float | np.ndarray) -> float | np.n
     wavenumber_m = frequency_hz / c
     wavenumber_nm = wavenumber_m / 1e9
     return wavenumber_nm
+
 
 def get_multiplier_nanometers(unit: str) -> float:
     """

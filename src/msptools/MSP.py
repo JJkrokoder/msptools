@@ -1,17 +1,28 @@
+import logging
+
+logging.basicConfig(level=logging.INFO)
 try:
     import cupy as np
+
+    logging.log(logging.INFO, "Using CUDA backend")
 except:
+    logging.log(logging.INFO, "Using Fallback numpy backend")
     import numpy as np
 
-from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
+from msptools.dipole_moments import (
+    calculate_dipole_moments_linear,
+    polarizability_to_matrix,
+)
 
-def solve_MSP_from_arrays(polarizability,
-                          external_field : np.ndarray,
-                          wave_number : float,
-                          green_tensor : np.ndarray,
-                          method : str = 'Iterative',
-                          **kwargs) -> np.ndarray:
 
+def solve_MSP_from_arrays(
+    polarizability,
+    external_field: np.ndarray,
+    wave_number: float,
+    green_tensor: np.ndarray,
+    method: str = "Iterative",
+    **kwargs,
+) -> np.ndarray:
     """
     Solve the Multiple Scattering Problem (MSP) using the provided arrays.
 
@@ -34,32 +45,60 @@ def solve_MSP_from_arrays(polarizability,
         The solution to the MSP.
 
     """
-    
-    if green_tensor.ndim != 4 or green_tensor.shape[0] != green_tensor.shape[1] or green_tensor.shape[2] != green_tensor.shape[3]:
-        raise ValueError("Invalid green_tensor shape. Expected shape (N, N, d, d), got {}".format(green_tensor.shape))
-    if green_tensor.shape[0] != external_field.shape[0]:
-        raise ValueError("The first dimension of green_tensor must match the number of particles in external_field. Expected {}, got {}".format(external_field.shape[0], green_tensor.shape[0]))
-    if green_tensor.shape[2] != external_field.shape[1]:
-        raise ValueError("The third dimension of green_tensor must match the system dimensionality. Expected {}, got {}".format(external_field.shape[1], green_tensor.shape[2]))
 
-    if method == 'Iterative':
-        if 'tolerance' in kwargs:
-            tolerance = kwargs['tolerance']
-            return array_MSP_iterative(polarizability, external_field, wave_number, green_tensor, tolerance=tolerance)
+    if (
+        green_tensor.ndim != 4
+        or green_tensor.shape[0] != green_tensor.shape[1]
+        or green_tensor.shape[2] != green_tensor.shape[3]
+    ):
+        raise ValueError(
+            "Invalid green_tensor shape. Expected shape (N, N, d, d), got {}".format(
+                green_tensor.shape
+            )
+        )
+    if green_tensor.shape[0] != external_field.shape[0]:
+        raise ValueError(
+            "The first dimension of green_tensor must match the number of particles in external_field. Expected {}, got {}".format(
+                external_field.shape[0], green_tensor.shape[0]
+            )
+        )
+    if green_tensor.shape[2] != external_field.shape[1]:
+        raise ValueError(
+            "The third dimension of green_tensor must match the system dimensionality. Expected {}, got {}".format(
+                external_field.shape[1], green_tensor.shape[2]
+            )
+        )
+
+    if method == "Iterative":
+        if "tolerance" in kwargs:
+            tolerance = kwargs["tolerance"]
+            return array_MSP_iterative(
+                polarizability,
+                external_field,
+                wave_number,
+                green_tensor,
+                tolerance=tolerance,
+            )
         else:
-            return array_MSP_iterative(polarizability, external_field, wave_number, green_tensor)
-    elif method == 'Inverse':
-        return array_MSP_inverse(polarizability, external_field, wave_number, green_tensor)
+            return array_MSP_iterative(
+                polarizability, external_field, wave_number, green_tensor
+            )
+    elif method == "Inverse":
+        return array_MSP_inverse(
+            polarizability, external_field, wave_number, green_tensor
+        )
     else:
         raise ValueError("Unknown method: {}".format(method))
 
-def array_MSP_iterative(polarizability : np.ndarray,
-                          external_field : np.ndarray,
-                          wave_number : float,
-                          green_tensor : np.ndarray,
-                          num_iterations : int = 500,
-                          tolerance : float = 1e-6) -> np.ndarray:
-    
+
+def array_MSP_iterative(
+    polarizability: np.ndarray,
+    external_field: np.ndarray,
+    wave_number: float,
+    green_tensor: np.ndarray,
+    num_iterations: int = 500,
+    tolerance: float = 1e-6,
+) -> np.ndarray:
     """
     Solve the MSP using an iterative method.
 
@@ -87,63 +126,82 @@ def array_MSP_iterative(polarizability : np.ndarray,
     old_field = external_field.copy()
 
     for iteration in range(num_iterations):
-        
+
         dipole_moments = calculate_dipole_moments_linear(polarizability, old_field)
-        scattered_field = wave_number**2 * np.einsum('ijmn,jn->im', green_tensor, dipole_moments)
+        scattered_field = wave_number**2 * np.einsum(
+            "ijmn,jn->im", green_tensor, dipole_moments
+        )
         new_field = external_field + scattered_field
 
-        if np.any(np.abs(new_field)/np.abs(external_field) > 1e6 ):
-            raise ValueError("The new field is significantly larger than the external field, indicating potential divergence in the iterative method.")
+        if np.any(np.abs(new_field) / np.abs(external_field) > 1e6):
+            raise ValueError(
+                "The new field is significantly larger than the external field, indicating potential divergence in the iterative method."
+            )
 
         if np.allclose(new_field, old_field, rtol=tolerance):
             break
         old_field = new_field.copy()
 
     if iteration == num_iterations - 1:
-        print(f"Warning: MSP iterative solution did not converge within {num_iterations} iterations.")
+        print(
+            f"Warning: MSP iterative solution did not converge within {num_iterations} iterations."
+        )
 
     return new_field
 
-def array_MSP_inverse(polarizability : np.ndarray,
-                        external_field : np.ndarray,
-                        wave_number : float,
-                        green_tensor : np.ndarray) -> np.ndarray:
-        """
-        Solve the MSP using the inverse method.
-    
-        Parameters
-        ----------
-        polarizability :
-            Polarizability of the particles.
-        external_field :
-            External field on particles positions.
-        wave_number :
-            Wave number of the incident wave.
-        green_tensor :
-            Green's tensor for the system.
-    
-        Returns
-        -------
-        np.ndarray
-            The solution to the MSP.
-        """
-        
-        num_particles = external_field.shape[0]
-        dimensions = external_field.shape[1]
 
-        green_tensor_matrix = green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
-        external_field_array = external_field.reshape(num_particles * dimensions, 1)
-        polarizability_matrix = polarizability_to_matrix(polarizability, num_particles, dimensions)
+def array_MSP_inverse(
+    polarizability: np.ndarray,
+    external_field: np.ndarray,
+    wave_number: float,
+    green_tensor: np.ndarray,
+) -> np.ndarray:
+    """
+    Solve the MSP using the inverse method.
 
-        MSP_matrix = np.eye(num_particles * dimensions) - wave_number**2 * green_tensor_matrix @ polarizability_matrix
-        MSP_matrix_inv = np.linalg.inv(MSP_matrix)
-        total_field = MSP_matrix_inv @ external_field_array
-        return total_field.reshape(num_particles, dimensions)
+    Parameters
+    ----------
+    polarizability :
+        Polarizability of the particles.
+    external_field :
+        External field on particles positions.
+    wave_number :
+        Wave number of the incident wave.
+    green_tensor :
+        Green's tensor for the system.
 
-def MSP_gradient_from_arrays(dipole_moments: np.ndarray,
-                             external_gradient : np.ndarray,
-                             wave_number : float,
-                             green_tensor_derivative : np.ndarray) -> np.ndarray:
+    Returns
+    -------
+    np.ndarray
+        The solution to the MSP.
+    """
+
+    num_particles = external_field.shape[0]
+    dimensions = external_field.shape[1]
+
+    green_tensor_matrix = green_tensor.transpose(0, 2, 1, 3).reshape(
+        num_particles * dimensions, num_particles * dimensions
+    )
+    external_field_array = external_field.reshape(num_particles * dimensions, 1)
+    polarizability_matrix = polarizability_to_matrix(
+        polarizability, num_particles, dimensions
+    )
+
+    MSP_matrix = (
+        np.eye(num_particles * dimensions)
+        - wave_number**2 * green_tensor_matrix @ polarizability_matrix
+    )
+    MSP_matrix_inv = np.linalg.inv(MSP_matrix)
+    total_field = MSP_matrix_inv @ external_field_array
+    return total_field.reshape(num_particles, dimensions)
+
+
+def MSP_gradient_from_arrays(
+    dipole_moments: np.ndarray,
+    external_gradient: np.ndarray,
+    wave_number: float,
+    green_tensor_derivative: np.ndarray,
+) -> np.ndarray:
     """
     Compute the gradient of the MSP solution with respect to particle positions.
 
@@ -164,14 +222,16 @@ def MSP_gradient_from_arrays(dipole_moments: np.ndarray,
     -------
     np.ndarray
         The gradient of the MSP solution with respect to particle positions.
-    
+
     Notes
     -----
     The gradient is returned as an array of shape (N, d, d) where N is the number of particles and d is the dimensionality.
     """
 
-    scattered_gradient = wave_number**2 * np.einsum('ijcmn,jn->icm', green_tensor_derivative, dipole_moments)
-    
+    scattered_gradient = wave_number**2 * np.einsum(
+        "ijcmn,jn->icm", green_tensor_derivative, dipole_moments
+    )
+
     MSP_gradient = external_gradient + scattered_gradient
 
     return MSP_gradient
