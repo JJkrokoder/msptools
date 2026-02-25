@@ -1,10 +1,21 @@
-import numpy as np
+import logging
+
+logging.basicConfig(level=logging.INFO)
+try:
+    import cupy as np
+
+    logging.log(logging.INFO, "Using CUDA backend")
+except:
+    logging.log(logging.INFO, "Using Fallback numpy backend")
+    import numpy as np
 
 
-def plane_wave_function(direction: np.ndarray,
-                        amplitude_vec: np.ndarray,
-                        positions: np.ndarray,
-                        k_magnitude: float) -> np.ndarray:
+def plane_wave_function(
+    direction: np.ndarray,
+    amplitude_vec: np.ndarray,
+    positions: np.ndarray,
+    k_magnitude: float,
+) -> np.ndarray:
     """
     Calculate the electric field of a plane wave at given positions.
 
@@ -32,17 +43,20 @@ def plane_wave_function(direction: np.ndarray,
     where A is the amplitude, k is the wave vector, and r is the position vector
     - positions and k_magnitude should be in consistent units.
     """
-    
+
     k_vector = direction * k_magnitude
 
     phase_factors = np.exp(1j * positions @ k_vector)
     electric_field = np.outer(phase_factors, amplitude_vec.T)
     return electric_field
 
-def plane_wave_gradient(direction: np.ndarray,
-                        amplitude_vec: np.ndarray,
-                        positions: np.ndarray,
-                        k_magnitude: float) -> np.ndarray:
+
+def plane_wave_gradient(
+    direction: np.ndarray,
+    amplitude_vec: np.ndarray,
+    positions: np.ndarray,
+    k_magnitude: float,
+) -> np.ndarray:
     """
     Calculate the gradient of the electric field of a plane wave at given positions.
 
@@ -65,14 +79,19 @@ def plane_wave_gradient(direction: np.ndarray,
     """
     k_vector = direction * k_magnitude
     phase_factors = np.exp(1j * positions @ k_vector)
-    gradient = 1j * np.einsum('ij,k -> ijk',np.outer(phase_factors, k_vector), amplitude_vec)
+    gradient = 1j * np.einsum(
+        "ij,k -> ijk", np.outer(phase_factors, k_vector), amplitude_vec
+    )
     return gradient
 
-def gaussian_paraxial_function(direction: np.ndarray,
-                              amplitude_vec: np.ndarray,
-                              positions: np.ndarray,
-                              k_magnitude: float,
-                              beam_waist: float) -> np.ndarray:
+
+def gaussian_paraxial_function(
+    direction: np.ndarray,
+    amplitude_vec: np.ndarray,
+    positions: np.ndarray,
+    k_magnitude: float,
+    beam_waist: float,
+) -> np.ndarray:
     """
     Calculate the electric field of a Gaussian paraxial beam at given positions.
 
@@ -110,10 +129,12 @@ def gaussian_paraxial_function(direction: np.ndarray,
     """
 
 
-def standing_wave_function(direction: np.ndarray,
-                           amplitude_vec: np.ndarray,
-                             positions: np.ndarray,
-                             k_magnitude: float) -> np.ndarray:
+def standing_wave_function(
+    direction: np.ndarray,
+    amplitude_vec: np.ndarray,
+    positions: np.ndarray,
+    k_magnitude: float,
+) -> np.ndarray:
     """
     Calculate the electric field of a standing wave at given positions.
 
@@ -136,10 +157,13 @@ def standing_wave_function(direction: np.ndarray,
     electric_field = np.outer(phase_factors, amplitude_vec.T)
     return electric_field
 
-def standing_wave_gradient(direction: np.ndarray,
-                           amplitude_vec: np.ndarray,
-                             positions: np.ndarray,
-                             k_magnitude: float) -> np.ndarray:
+
+def standing_wave_gradient(
+    direction: np.ndarray,
+    amplitude_vec: np.ndarray,
+    positions: np.ndarray,
+    k_magnitude: float,
+) -> np.ndarray:
     """
     Calculate the gradient of the electric field of a standing wave at given positions.
 
@@ -159,5 +183,7 @@ def standing_wave_gradient(direction: np.ndarray,
     """
     k_vector = direction * k_magnitude
     phase_factors = -np.sin(positions @ k_vector)
-    gradient = np.einsum('ij,k -> ijk',np.outer(phase_factors, k_vector), amplitude_vec)
+    gradient = np.einsum(
+        "ij,k -> ijk", np.outer(phase_factors, k_vector), amplitude_vec
+    )
     return gradient
