@@ -1,4 +1,8 @@
-import numpy as np
+try:
+    import cupy as np
+except:
+    import numpy as np
+
 from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
 
 def solve_MSP_from_arrays(polarizability,
@@ -123,7 +127,7 @@ def array_MSP_inverse(polarizability : np.ndarray,
         np.ndarray
             The solution to the MSP.
         """
-
+        
         num_particles = external_field.shape[0]
         dimensions = external_field.shape[1]
 
