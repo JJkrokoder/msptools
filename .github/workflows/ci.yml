@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Micromamba
+      uses: mamba-org/setup-micromamba@v2
+      with:
+        environment-file: environment.yml
+        environment-name: msptools
+        cache-environment: true
+        init-shell: bash
+
+    - name: Display conda environment
+      shell: bash -el {0}
+      run: |
+        conda info
+        conda list
+
+    - name: Install project
+      shell: bash -el {0}
+      run: |
+        pip install .
+        
+    - name: Run tests with pytest
+      shell: bash -el {0}
+      run: |
+        pytest
