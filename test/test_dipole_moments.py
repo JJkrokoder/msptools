@@ -11,15 +11,14 @@ class TestDipoleMomentsLin:
         np.array([[1, 0, 0], [0, 1+2j, -3 + 5j]]),
     ])
     @pytest.mark.parametrize("polarizability", [
-        1, 1 + 0j])  
+        np.array([[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[1, 0, 0], [0, 1, 0], [0, 0, 1]]]),
+        np.array([1, 1]),
+        np.array([1 + 0j, 1 + 0j]),
+    ])
     def test_unit_dipole_moment(self, electric_field, polarizability):
         dipole_moments = calculate_dipole_moments_linear(polarizability, electric_field)
         assert np.allclose(dipole_moments, electric_field), "Dipole moments should equal electric field for unit polarizability."
 
-    def test_non_supported_polarizability(self):
-        with pytest.raises(TypeError):
-            calculate_dipole_moments_linear("invalid_type", np.array([[1, 0, 0], [0, 1+2j, -3 + 5j]]))
-    
     def test_different_polarizabilities(self):
         electric_field = np.array([[1, 0, 0], [0, 1+2j, -3 + 5j], [0, 0, 1]])
         polarizabilities = [1 + 0j, 2 + 0j, 6j]

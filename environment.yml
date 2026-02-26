@@ -12,3 +12,4 @@ dependencies:
   - matplotlib
   - pip:
     - refractiveindex==0.0.7
+    - cupy

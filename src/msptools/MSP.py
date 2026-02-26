@@ -1,15 +1,13 @@
-try:
-    import cupy as np
-except:
-    import numpy as np
+import logging
+import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
 
-def solve_MSP_from_arrays(polarizability,
+def solve_MSP_from_arrays(polarizabilities : np.ndarray,
                           external_field : np.ndarray,
                           wave_number : float,
                           green_tensor : np.ndarray,
-                          method : str = 'Iterative',
+                          method : str = 'Inverse',
                           **kwargs) -> np.ndarray:
 
     """
@@ -17,8 +15,8 @@ def solve_MSP_from_arrays(polarizability,
 
     Parameters
     ----------
-    polarizability :
-        Polarizability of the particles, can be a complex number, float, int, list, or numpy array.
+    polarizabilities :
+        Polarizabilities of the particles.
     external_field :
         External field on particles positions.
     wave_number :
@@ -26,7 +24,7 @@ def solve_MSP_from_arrays(polarizability,
     green_tensor :
         Green's tensor for the system.
     method :
-        Method to solve the MSP, either 'Iterative' or 'Inverse'. The default is 'Iterative'.
+        Method to solve the MSP, either 'Iterative' or 'Inverse'. The default is 'Inverse'.
 
     Returns
     -------
@@ -45,15 +43,15 @@ def solve_MSP_from_arrays(polarizability,
     if method == 'Iterative':
         if 'tolerance' in kwargs:
             tolerance = kwargs['tolerance']
-            return array_MSP_iterative(polarizability, external_field, wave_number, green_tensor, tolerance=tolerance)
+            return array_MSP_iterative(polarizabilities, external_field, wave_number, green_tensor, tolerance=tolerance)
         else:
-            return array_MSP_iterative(polarizability, external_field, wave_number, green_tensor)
+            return array_MSP_iterative(polarizabilities, external_field, wave_number, green_tensor)
     elif method == 'Inverse':
-        return array_MSP_inverse(polarizability, external_field, wave_number, green_tensor)
+        return array_MSP_inverse(polarizabilities, external_field, wave_number, green_tensor)
     else:
         raise ValueError("Unknown method: {}".format(method))
 
-def array_MSP_iterative(polarizability : np.ndarray,
+def array_MSP_iterative(polarizabilities : np.ndarray,
                           external_field : np.ndarray,
                           wave_number : float,
                           green_tensor : np.ndarray,
@@ -65,8 +63,8 @@ def array_MSP_iterative(polarizability : np.ndarray,
 
     Parameters
     ----------
-    polarizability :
-        Polarizability of the particles.
+    polarizabilities :
+        Polarizabilities of the particles.
     external_field :
         External field on particles positions.
     wave_number :
@@ -83,12 +81,13 @@ def array_MSP_iterative(polarizability : np.ndarray,
     np.ndarray
         The solution to the MSP.
     """
-
     old_field = external_field.copy()
 
     for iteration in range(num_iterations):
         
-        dipole_moments = calculate_dipole_moments_linear(polarizability, old_field)
+        dipole_moments = calculate_dipole_moments_linear(polarizabilities, old_field)
+        print(f"dipole array type: {type(dipole_moments)}, shape: {dipole_moments.shape}, dtype: {dipole_moments.dtype}")
+        print("dipole moments:\n", dipole_moments)
         scattered_field = wave_number**2 * np.einsum('ijmn,jn->im', green_tensor, dipole_moments)
         new_field = external_field + scattered_field
 
@@ -104,7 +103,7 @@ def array_MSP_iterative(polarizability : np.ndarray,
 
     return new_field
 
-def array_MSP_inverse(polarizability : np.ndarray,
+def array_MSP_inverse(polarizabilities : np.ndarray,
                         external_field : np.ndarray,
                         wave_number : float,
                         green_tensor : np.ndarray) -> np.ndarray:
@@ -113,8 +112,8 @@ def array_MSP_inverse(polarizability : np.ndarray,
     
         Parameters
         ----------
-        polarizability :
-            Polarizability of the particles.
+        polarizabilities :
+            Polarizabilities of the particles.
         external_field :
             External field on particles positions.
         wave_number :
@@ -127,17 +126,28 @@ def array_MSP_inverse(polarizability : np.ndarray,
         np.ndarray
             The solution to the MSP.
         """
+
+        logging.basicConfig(level=logging.INFO)
+        try:
+            import cupy as np
+            print("Using CUDA backend")
+            logging.log(logging.INFO, "Using CUDA backend")
+        except:
+            print("CUDA backend not available, falling back to numpy.")
+            ValueError("CUDA backend not available, falling back to numpy.")
+            # logging.log(logging.INFO, "Using Fallback numpy backend")
+            # import numpy as np
         
         num_particles = external_field.shape[0]
         dimensions = external_field.shape[1]
 
         green_tensor_matrix = green_tensor.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
         external_field_array = external_field.reshape(num_particles * dimensions, 1)
-        polarizability_matrix = polarizability_to_matrix(polarizability, num_particles, dimensions)
+        polarizability_matrix = polarizability_to_matrix(polarizabilities, num_particles, dimensions)
 
-        MSP_matrix = np.eye(num_particles * dimensions) - wave_number**2 * green_tensor_matrix @ polarizability_matrix
+        MSP_matrix = np.eye(num_particles * dimensions) - wave_number**2 * np.asarray(green_tensor_matrix) @ np.asarray(polarizability_matrix)
         MSP_matrix_inv = np.linalg.inv(MSP_matrix)
-        total_field = MSP_matrix_inv @ external_field_array
+        total_field = MSP_matrix_inv @ np.asarray(external_field_array)
         return total_field.reshape(num_particles, dimensions)
 
 def MSP_gradient_from_arrays(dipole_moments: np.ndarray,
@@ -149,10 +159,8 @@ def MSP_gradient_from_arrays(dipole_moments: np.ndarray,
 
     Parameters
     ----------
-    polarizability :
-        Polarizability of the particles.
-    MS_field :
-        Multiple scattering field on particles positions.
+    dipole_moments :
+        Dipole moments of the particles.
     external_gradient :
         Gradient of the external field on particles positions.
     wave_number :
