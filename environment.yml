@@ -10,6 +10,6 @@ dependencies:
   - pytest
   - sphinx
   - matplotlib
-  - cupy-cuda12
+  - cupy
   - pip:
     - refractiveindex==0.0.7
