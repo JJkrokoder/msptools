@@ -92,11 +92,11 @@ class System:
 
         external_field = self.field.get_external_field_in_positions(self.particles.get_positions())
         green_tensor = construct_green_tensor(self.particles.get_positions(), self.medium_wave_number_nm)
-        field_solution = solve_MSP_from_arrays(polarizability=self.particles.polarizabilities,
+        polarizabilities_array = np.array(self.particles.polarizabilities)
+        field_solution = solve_MSP_from_arrays(polarizabilities=polarizabilities_array,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
-                                   green_tensor=green_tensor,
-                                   method='Iterative')
+                                   green_tensor=green_tensor)
         return field_solution
     
     def get_field_gradient_in_particles(self, current_field: np.ndarray) -> np.ndarray:

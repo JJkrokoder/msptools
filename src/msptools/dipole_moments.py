@@ -1,22 +1,30 @@
 import numpy as np
 from typing import List
 
-def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex] | float | List[float],
+def calculate_dipole_moments_linear(polarizabilities: np.ndarray,
                                     electric_field : np.ndarray) -> np.ndarray:
+    """
+    Calculate the dipole moments using a linear relationship with the electric field.
     
+    Parameters
+    ----------
+    polarizabilities :
+        Polarizabilities of the particles, can be a single value or an array for each particle.
+    electric_field :
+        The electric field at the positions of the particles.
     
-    if isinstance(polarizability, (complex, float, int)):
-        polarizability += 0j  # Ensure polarizability is treated as a complex number
-        dipole_moments = polarizability * electric_field
-    elif isinstance(polarizability, (list, np.ndarray)):
-        number_of_polarizabilities = len(polarizability) if isinstance(polarizability, list) else polarizability.shape[0]
-        if number_of_polarizabilities != electric_field.shape[0]:
-            raise ValueError("Polarizability and electric field must have the same number of elements.")
-        dipole_moments = np.array([polarizability[i] * electric_field[i,:] for i in range(number_of_polarizabilities)])
-    else:
-        raise TypeError("Polarizability must be a complex number, float, int, list, or numpy array.")
-
-
+    Returns
+    -------
+    np.ndarray
+        The calculated dipole moments for each particle.
+    """
+    
+    dipole_moments = np.copy(electric_field)
+    for i in range(electric_field.shape[0]):
+        if isinstance(polarizabilities[i], (complex, float, int)):
+            dipole_moments[i] = polarizabilities[i] * electric_field[i]
+        else:
+            dipole_moments[i] = np.dot(polarizabilities[i], electric_field[i])
     return dipole_moments
 
 def polarizability_to_matrix(polarizability, num_particles : int, dimensions : int) -> np.ndarray:

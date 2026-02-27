@@ -10,5 +10,6 @@ dependencies:
   - pytest
   - sphinx
   - matplotlib
+  - cupy
   - pip:
-    - refractiveindex
+    - refractiveindex==0.0.7
