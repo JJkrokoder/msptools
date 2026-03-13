@@ -11,4 +11,6 @@ dependencies:
   - sphinx
   - matplotlib
   - pip:
-    - refractiveindex==0.0.7
+    - refractiveindex==1.0.0
+
+
