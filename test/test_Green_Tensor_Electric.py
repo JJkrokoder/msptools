@@ -108,12 +108,12 @@ class Test_PairGreenTensor:
         pos_j = np.array([1.5, 0, 0])
 
         g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
-        cosine = np.cos(angle).get()
-        sine = np.sin(angle).get()
+        cosine = float(np.cos(angle))
+        sine = float(np.sin(angle))
 
-        rotation = np.array([[cosine, -sine, 0.],
+        rotation = np.asarray([[cosine, -sine, 0.],
                              [sine, cosine, 0.],
-                             [0., 0., 1.]])
+                             [0., 0., 1.]], dtype=np.float64)
 
 
         rotated_g_ij = pair_green_tensor(rotation @ pos_i, rotation @ pos_j, self.wave_number)
