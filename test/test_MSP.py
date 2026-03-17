@@ -1,5 +1,8 @@
 import pytest
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 from msptools.MSP import *
 from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
 from msptools.GreenTensor_Electric import construct_green_tensor

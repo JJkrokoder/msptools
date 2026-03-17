@@ -1,4 +1,7 @@
-import numpy as np
+try :
+    import cupy as np
+except ImportError:
+    import numpy as np
 
 def G_0_function(r: float, wave_number: float) -> complex:
     """

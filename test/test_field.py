@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 import msptools as msp
 
 class Test_General_Field():
@@ -18,9 +21,9 @@ class Test_General_Field():
 class Test_Plane_Wave_Field():
 
     def test_initialize_plane_wave_field(self):
-        direction = [0, 1, 1]
+        direction = np.array([0, 1, 1])
         amplitude = 1.0
-        polarization = [1.0, 0.0, 0.0]
+        polarization = np.array([1.0, 0.0, 0.0])
         frequency = 2.0  # eV
 
         field = msp.PlaneWaveField(direction=direction,
@@ -76,7 +79,7 @@ class Test_Plane_Wave_Field():
         
         k_magnitude = 2 * np.pi / wavelength  # in nm^-1
         expected_gradient = 1j * k_magnitude * np.einsum('ij,k -> ijk',
-                                                            np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), direction),
+                                                            np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), np.array(direction)),
                                                             np.array(polarization))
 
         computed_gradient = field.external_gradient_function(positions_nm)

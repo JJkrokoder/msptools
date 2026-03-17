@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    import cupy as np
+except:
+    import numpy as np
 from typing import Callable
 from scipy.special import spherical_jn as sph_jn
 from scipy.special import spherical_yn as sph_yn
@@ -66,7 +69,7 @@ def Mie_size_dipole_approximation(radius: float, medium_permittivity: float, par
     - Wave number and radius should be in consistent units.
     """
 
-    k_m = wave_number * np.sqrt(medium_permittivity)
+    k_m = wave_number * (medium_permittivity)**0.5
     k = wave_number
     e_m = medium_permittivity
     e_p = particle_permittivity

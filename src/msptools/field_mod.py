@@ -1,5 +1,8 @@
 from typing import List
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 from .tools.unit_calcs import *
 from .tools.field_tools import *
 

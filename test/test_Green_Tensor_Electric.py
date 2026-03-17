@@ -1,4 +1,8 @@
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
+    
 import pytest
 from msptools.GreenTensor_Electric import *
 
@@ -104,10 +108,12 @@ class Test_PairGreenTensor:
         pos_j = np.array([1.5, 0, 0])
 
         g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+        cosine = np.cos(angle).get()
+        sine = np.sin(angle).get()
 
-        rotation = np.array([[np.cos(angle), -np.sin(angle), 0],
-                             [np.sin(angle), np.cos(angle), 0],
-                             [0, 0, 1]])
+        rotation = np.array([[cosine, -sine, 0.],
+                             [sine, cosine, 0.],
+                             [0., 0., 1.]])
 
 
         rotated_g_ij = pair_green_tensor(rotation @ pos_i, rotation @ pos_j, self.wave_number)

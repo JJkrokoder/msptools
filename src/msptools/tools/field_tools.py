@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 
 
 def plane_wave_function(direction: np.ndarray,
