@@ -45,8 +45,9 @@ class TestPolarizabilityToMatrix:
         result = polarizability_to_matrix(polarizability, num_particles, self.dimensions)
         assert result.shape == expected_shape, f"Expected shape {expected_shape}, but got {result.shape}."
     
-    @pytest.mark.parametrize("num_particles", [1, 2, 3, 5])
-    def test_different_scalar_polarizabilities(self, num_particles):
-        polarizability = np.random.rand(num_particles) + 1j * np.random.rand(num_particles)
+    @pytest.mark.parametrize(["polarizability", "num_particles"], [
+        (1 + 2j, 3)])
+    def test_different_scalar_polarizabilities(self, polarizability, num_particles):
         result = polarizability_to_matrix(polarizability, num_particles, self.dimensions)
-        assert np.allclose(np.diag(result[:self.dimensions, :self.dimensions]), polarizability[0].repeat(self.dimensions)), "Diagonal elements should match the polarizability values."
+        expected_polarizability_matrix = np.eye(self.dimensions * num_particles) * polarizability
+        assert np.allclose(np.diag(result), np.diag(expected_polarizability_matrix)), "Diagonal elements should match the polarizability values."

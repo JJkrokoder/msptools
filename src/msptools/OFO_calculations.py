@@ -1,5 +1,8 @@
 from typing import Iterable
-import numpy as np
+try:    
+    import cupy as np
+except ImportError:    
+    import numpy as np
 
 def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndarray, field_gradient: np.ndarray) -> np.ndarray:
     """

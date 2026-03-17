@@ -35,6 +35,9 @@ def solve_MSP_from_arrays(polarizability,
 
     """
     
+    green_tensor = np.asarray(green_tensor)
+    external_field = np.asarray(external_field)
+    
     if green_tensor.ndim != 4 or green_tensor.shape[0] != green_tensor.shape[1] or green_tensor.shape[2] != green_tensor.shape[3]:
         raise ValueError("Invalid green_tensor shape. Expected shape (N, N, d, d), got {}".format(green_tensor.shape))
     if green_tensor.shape[0] != external_field.shape[0]:

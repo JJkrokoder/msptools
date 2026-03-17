@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 from typing import List
 
 def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex] | float | List[float],

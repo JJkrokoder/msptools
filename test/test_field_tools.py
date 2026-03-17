@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 import msptools as msp
 
 def test_plane_wave_func_in_zero():
@@ -91,11 +94,11 @@ class Test_Plane_Wave_Gradient():
                               [750.0, 750.0, 0.0],
                               [1000.0, 1000.0, 0.0]])/ np.sqrt(2)
 
-        expected_grad_Ez = np.array([[1j * wave_number_nm/np.sqrt(2), 1j * wave_number_nm/np.sqrt(2), 0.0],
-                                    [-1j * wave_number_nm/np.sqrt(2), -1j * wave_number_nm/np.sqrt(2), 0.0],
-                                    [1j * wave_number_nm/np.sqrt(2), 1j * wave_number_nm/np.sqrt(2), 0.0],
-                                    [-1j * wave_number_nm/np.sqrt(2), -1j * wave_number_nm/np.sqrt(2), 0.0],
-                                    [1j * wave_number_nm/np.sqrt(2), 1j * wave_number_nm/np.sqrt(2), 0.0]])
+        expected_grad_Ez = np.array([[1j * wave_number_nm/2**0.5, 1j * wave_number_nm/2**0.5, 0.0],
+                                    [-1j * wave_number_nm/2**0.5, -1j * wave_number_nm/2**0.5, 0.0],
+                                    [1j * wave_number_nm/2**0.5, 1j * wave_number_nm/2**0.5, 0.0],
+                                    [-1j * wave_number_nm/2**0.5, -1j * wave_number_nm/2**0.5, 0.0],
+                                    [1j * wave_number_nm/2**0.5, 1j * wave_number_nm/2**0.5, 0.0]])
 
         computed_gradient = msp.plane_wave_gradient(direction, amplitude, positions, wave_number_nm)
         computed_grad_Ez = computed_gradient[:, :, 2]

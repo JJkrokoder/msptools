@@ -2,7 +2,10 @@ from .polarizability_mod import *
 from .tools.unit_calcs import *
 from .permittivity import permittivity_ridx
 from typing import List, Tuple, Self, Callable
-import numpy as np
+try:
+    import cupy as np
+except:
+    import numpy as np
 
 class ParticleType:
     """Class representing a type of particle with specific properties."""
