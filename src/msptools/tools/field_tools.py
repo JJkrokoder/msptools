@@ -1,13 +1,11 @@
-try:
-    import cupy as np
-except ImportError:
-    import numpy as np
-
-
-def plane_wave_function(direction: np.ndarray,
-                        amplitude_vec: np.ndarray,
-                        positions: np.ndarray,
-                        k_magnitude: float) -> np.ndarray:
+import numpy as np
+from numpy.typing import ArrayLike
+from msptools.backend import get_backend
+    
+def plane_wave_function(direction: ArrayLike,
+                        amplitude_vec: ArrayLike,
+                        positions: ArrayLike,
+                        k_magnitude: float) -> ArrayLike:
     """
     Calculate the electric field of a plane wave at given positions.
 
@@ -25,7 +23,7 @@ def plane_wave_function(direction: np.ndarray,
 
     Returns
     -------
-    np.ndarray
+    electric_field :
         The electric field at specified positions.
 
     Notes
@@ -35,17 +33,18 @@ def plane_wave_function(direction: np.ndarray,
     where A is the amplitude, k is the wave vector, and r is the position vector
     - positions and k_magnitude should be in consistent units.
     """
-    
+    xp = get_backend(positions)
+
     k_vector = direction * k_magnitude
 
-    phase_factors = np.exp(1j * positions @ k_vector)
-    electric_field = np.outer(phase_factors, amplitude_vec.T)
+    phase_factors = xp.exp(1j * positions @ k_vector)
+    electric_field = xp.outer(phase_factors, amplitude_vec.T)
     return electric_field
 
-def plane_wave_gradient(direction: np.ndarray,
-                        amplitude_vec: np.ndarray,
-                        positions: np.ndarray,
-                        k_magnitude: float) -> np.ndarray:
+def plane_wave_gradient(direction: ArrayLike,
+                        amplitude_vec: ArrayLike,
+                        positions: ArrayLike,
+                        k_magnitude: float) -> ArrayLike:
     """
     Calculate the gradient of the electric field of a plane wave at given positions.
 
@@ -66,16 +65,17 @@ def plane_wave_gradient(direction: np.ndarray,
     np.ndarray
         The gradient of the electric field at specified positions.
     """
+    xp = get_backend(positions)
     k_vector = direction * k_magnitude
-    phase_factors = np.exp(1j * positions @ k_vector)
-    gradient = 1j * np.einsum('ij,k -> ijk',np.outer(phase_factors, k_vector), amplitude_vec)
+    phase_factors = xp.exp((1j * positions) @ k_vector)
+    gradient = xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), 1j*amplitude_vec)
     return gradient
 
-def gaussian_paraxial_function(direction: np.ndarray,
-                              amplitude_vec: np.ndarray,
-                              positions: np.ndarray,
+def gaussian_paraxial_function(direction: ArrayLike,
+                              amplitude_vec: ArrayLike,
+                              positions: ArrayLike,
                               k_magnitude: float,
-                              beam_waist: float) -> np.ndarray:
+                              beam_waist: float) -> ArrayLike:
     """
     Calculate the electric field of a Gaussian paraxial beam at given positions.
 
@@ -113,10 +113,10 @@ def gaussian_paraxial_function(direction: np.ndarray,
     """
 
 
-def standing_wave_function(direction: np.ndarray,
-                           amplitude_vec: np.ndarray,
-                             positions: np.ndarray,
-                             k_magnitude: float) -> np.ndarray:
+def standing_wave_function(direction: ArrayLike,
+                           amplitude_vec: ArrayLike,
+                             positions: ArrayLike,
+                             k_magnitude: float) -> ArrayLike:
     """
     Calculate the electric field of a standing wave at given positions.
 
@@ -134,15 +134,17 @@ def standing_wave_function(direction: np.ndarray,
     np.ndarray
         The electric field at specified positions.
     """
-
-    phase_factors = np.cos(positions @ (direction * k_magnitude))
-    electric_field = np.outer(phase_factors, amplitude_vec.T)
+    xp = get_backend(positions)
+    
+    print(f"Current backend: {xp.__name__}")
+    phase_factors = xp.cos(positions @ (direction * k_magnitude))
+    electric_field = xp.outer(phase_factors, amplitude_vec.T)
     return electric_field
 
-def standing_wave_gradient(direction: np.ndarray,
-                           amplitude_vec: np.ndarray,
-                             positions: np.ndarray,
-                             k_magnitude: float) -> np.ndarray:
+def standing_wave_gradient(direction: ArrayLike,
+                           amplitude_vec: ArrayLike,
+                             positions: ArrayLike,
+                             k_magnitude: float) -> ArrayLike:
     """
     Calculate the gradient of the electric field of a standing wave at given positions.
 
@@ -160,7 +162,9 @@ def standing_wave_gradient(direction: np.ndarray,
     np.ndarray
         The gradient of the electric field at specified positions.
     """
+    xp = get_backend(positions)
+    
     k_vector = direction * k_magnitude
-    phase_factors = -np.sin(positions @ k_vector)
-    gradient = np.einsum('ij,k -> ijk',np.outer(phase_factors, k_vector), amplitude_vec)
+    phase_factors = -xp.sin(positions @ k_vector)
+    gradient = 1j * xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), amplitude_vec)
     return gradient

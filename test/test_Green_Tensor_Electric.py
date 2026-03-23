@@ -80,34 +80,35 @@ class Test_PairGreenTensor:
 
     wave_number = 2.0
     
+    pos_i = np.array([0, 0, 0])
+    pos_j = np.array([1.5, 0, 0])
+    total_green_tensor = construct_green_tensor(np.array([pos_i, pos_j]), wave_number)
+    pair_green_tensor = total_green_tensor[0, 1]  # Extract the pair Green's tensor for the two positions
+    
     def test_symmetry(self):
-        pos_i = np.array([0, 0, 0])
-        pos_j = np.array([1.5, 0, 0])
 
-        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+        g_ij = self.pair_green_tensor
+        
+        swapped_g_ij = self.total_green_tensor[1, 0]  # Extract the pair Green's tensor for the swapped positions
 
         assert np.allclose(g_ij, g_ij.T), "Pair Green's tensor is not symmetric."
-        assert np.allclose(g_ij, pair_green_tensor(pos_j, pos_i, self.wave_number)), "Pair Green's tensor is not equal when positions are swapped."
+        assert np.allclose(g_ij, swapped_g_ij), "Pair Green's tensor is not equal when positions are swapped."
     
     @pytest.mark.parametrize("translation_vector", [
         np.array([1, 0, 0]),
         np.array([1, 1.5, 1])
     ])
     def test_translational_invariance(self, translation_vector):
-        pos_i = np.array([0, 0, 0])
-        pos_j = np.array([1.5, 0, 0])
 
-        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
-        translated_g_ij = pair_green_tensor(pos_i + translation_vector, pos_j + translation_vector, self.wave_number)
+        g_ij = self.pair_green_tensor
+        translated_g_ij = construct_green_tensor(np.array([self.pos_i + translation_vector, self.pos_j + translation_vector]), self.wave_number)[0, 1]
 
         assert np.allclose(g_ij, translated_g_ij), "Pair Green's tensor is not translationally invariant."
     
     @pytest.mark.parametrize("angle", [0, np.pi/4, np.pi/2])
     def test_rotational_invariance(self, angle):
-        pos_i = np.array([1, 1, 1])
-        pos_j = np.array([1.5, 0, 0])
 
-        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+        g_ij = construct_green_tensor(np.array([self.pos_i, self.pos_j]), self.wave_number)[0, 1]  # Extract the pair Green's tensor for the two positions
         cosine = float(np.cos(angle))
         sine = float(np.sin(angle))
 
@@ -116,7 +117,7 @@ class Test_PairGreenTensor:
                              [0., 0., 1.]], dtype=np.float64)
 
 
-        rotated_g_ij = pair_green_tensor(rotation @ pos_i, rotation @ pos_j, self.wave_number)
+        rotated_g_ij = construct_green_tensor(np.array([rotation @ self.pos_i, rotation @ self.pos_j]), self.wave_number)[0, 1]  # Extract the pair Green's tensor for the two positions
 
         assert np.allclose(rotation @ g_ij @ rotation.T, rotated_g_ij), "Pair Green's tensor is not rotationally invariant."
 
@@ -128,11 +129,11 @@ class Test_PairGreenTensor:
         direction_vector = np.array([1, 1, 0.5])
         direction_vector /= np.linalg.norm(direction_vector)
 
-        pos_i = np.array([0, 0, 0])
+        pos_i = self.pos_i
         pos_j = distance * direction_vector
         R_vec = pos_i - pos_j
 
-        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+        g_ij = construct_green_tensor(np.array([pos_i, pos_j]), self.wave_number)[0, 1]
         
         g0_ff = np.exp(1j * norm_distance) / (4 * np.pi * distance)
         g1_ff = -np.exp(1j * norm_distance) / (4 * np.pi * distance) / distance**2
@@ -146,10 +147,10 @@ class Test_PairGreenTensor:
         np.array([0, 0, 1])])
     def test_nearfield_consistency(self, unit_vector):
         distance = 1e-5 / self.wave_number
-        pos_i = np.array([0, 0, 0])
+        pos_i = self.pos_i
         pos_j = distance * unit_vector
 
-        g_ij = pair_green_tensor(pos_i, pos_j, self.wave_number)
+        g_ij = construct_green_tensor(np.array([pos_i, pos_j]), self.wave_number)[0, 1]
 
         g0_nf = -1 / (4 * np.pi * self.wave_number**2 * distance**3)
         g1_nf = 3 / (4 * np.pi * self.wave_number**2 * distance**5)
@@ -183,11 +184,11 @@ class Test_Pair_GreenTensor_Derivative:
 
         pos_i_plus = pos_i.copy()
         pos_i_plus[coordinate] += h
-        g_plus = pair_green_tensor(pos_i_plus, pos_j, self.wave_number)
+        g_plus = construct_green_tensor(np.array([pos_i_plus, pos_j]), self.wave_number)[0, 1]
 
         pos_i_minus = pos_i.copy()
         pos_i_minus[coordinate] -= h
-        g_minus = pair_green_tensor(pos_i_minus, pos_j, self.wave_number)
+        g_minus = construct_green_tensor(np.array([pos_i_minus, pos_j]), self.wave_number)[0, 1]
 
         der_g_numerical = (g_plus - g_minus) / (2 * h)
 

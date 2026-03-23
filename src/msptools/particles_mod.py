@@ -1,26 +1,30 @@
 from typing import List
-try: 
-    import cupy as np
-except ImportError:
-    import numpy as np
 from .tools.unit_calcs import get_multiplier_nanometers
+from .backend import get_backend
+from numpy.typing import ArrayLike
 
 
 class Particles:
     """Class representing a system of particles."""
 
-    def __init__(self) -> None:
+    def __init__(self, xp, dim: int = 3) -> None:
         """
         Initialize a Particles object.
+        
+        Parameters
+        ----------
+        xp :
+            The array library to use (e.g., numpy or cupy).
         """
-
-        self.positions = []
-        self.polarizabilities = []
+        self.xp = xp
+        self.dim = dim
+        self.positions = self.xp.empty((0, self.dim))
+        self.polarizabilities = self.xp.empty((0))
 
 
     def add_particles(self,
-                     positions: List[List[float]],
-                     polarizabilities: complex | List[complex]) -> None:
+                     positions: ArrayLike,
+                     polarizabilities: ArrayLike) -> None:
         """
         Add particles to the system at specified positions and with specified polarizabilities.
 
@@ -34,51 +38,16 @@ class Particles:
             The unit of the positions provided.
         """
 
-        self.positions.extend(positions)
+        self.positions = self.xp.concatenate((self.positions, positions))
+        self.polarizabilities = self.xp.concatenate((self.polarizabilities, polarizabilities))
 
-        if isinstance(polarizabilities, list):
-            self.polarizabilities.extend(polarizabilities)
-        else:
-            self.polarizabilities.extend([polarizabilities] * len(positions))
-
-    def get_positions(self) -> np.ndarray:
-        """
-        Get the positions of all particles in the system. If there is only one particle, returns a 1D array.
-
-        Returns
-        -------
-        np.ndarray
-            An array of shape (N, 3) where N is the number of particles.
-        """
-
-        positions = np.array(self.positions)
-        
-        return positions
-    
-    def get_position(self, index: int) -> np.ndarray:
-        """
-        Get the position of a specific particle by its index.
-
-        Parameters
-        ----------
-        index :
-            The index of the particle whose position is to be retrieved.
-
-        Returns
-        -------
-        np.ndarray
-            A 1D array representing the position of the specified particle.
-        """
-
-        return np.array(self.positions[index])
-    
     def clean_particles(self) -> None:
         """
         Remove all particles' data from the system.
         """
 
-        self.positions = []
-        self.polarizabilities = []
+        self.positions = self.xp.empty((0, self.dim))
+        self.polarizabilities = self.xp.empty((0))  # Reset polarizabilities to an empty array with shape (0)
 
 
     def _calculate_polarizabilities(self) -> None:
@@ -90,7 +59,8 @@ class Particles:
             type_index = self.type_assignments[particle]
             particle_type = self.types[type_index]
             polarizability = particle_type.compute_polarizability()
-            self.polarizabilities.append(polarizability)
+            self.polarizabilities = self.xp.concatenate((self.polarizabilities, polarizability))
+            
 
     def set_position(self, index: int, position: List[float]) -> None:
         """

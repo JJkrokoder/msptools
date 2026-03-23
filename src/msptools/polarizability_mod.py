@@ -1,10 +1,9 @@
-try:
-    import cupy as np
-except:
-    import numpy as np
+from .backend import get_backend
 from typing import Callable
 from scipy.special import spherical_jn as sph_jn
 from scipy.special import spherical_yn as sph_yn
+from scipy.constants import pi
+from numpy.typing import ArrayLike
 
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
     """Select the polarizability computation method based on the material and excitation wavelength."""  
@@ -33,7 +32,7 @@ def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permit
         The polarizability of the spherical particle.
     """
 
-    polarizability = 4 * np.pi * (radius**3) * (particle_permittivity - medium_permittivity) / (particle_permittivity + 2 * medium_permittivity)
+    polarizability = 4 * pi * (radius**3) * (particle_permittivity - medium_permittivity) / (particle_permittivity + 2 * medium_permittivity)
 
     return polarizability
 
@@ -81,7 +80,7 @@ def Mie_size_dipole_approximation(radius: float, medium_permittivity: float, par
 
     A_term = (rho**2 / 10) * (e_p + e_m)
     B_term = (rho**2 / 10) * (e_p + 10 * e_m) * epsilon_ratio
-    C_term = 1j * k_m**3 * alpha_0 / (6 * np.pi)
+    C_term = 1j * k_m**3 * alpha_0 / (6 * pi)
 
     polarizability_mie = alpha_0 * (1 - A_term) / (1 - C_term - B_term)
 
@@ -128,5 +127,35 @@ def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float
 
     tE1 = (t11 - t12) / (t21 - t22)
 
-    alpha_e = 6 * np.pi / (k_m**3) * tE1
+    alpha_e = 6 * pi / (k_m**3) * tE1
     return alpha_e
+
+def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, num_particles: int, dimensions: int, xp) -> ArrayLike:
+    """
+    Convert the polarizability from various input formats to a matrix form suitable for MSP calculations.
+
+    Parameters
+    ----------
+    polarizability :
+        The polarizability of the particles. Can be a scalar, a 1D array of length N, or a 3D array of shape (N, d, d).
+    num_particles :
+        The number of particles in the system.
+    dimensions :
+        The dimensionality of the system (e.g., 3 for 3D).
+        
+    Returns
+    -------
+    ArrayLike
+        The polarizability in matrix form, with shape (N, d, d).
+    
+    """
+        
+    if xp.isscalar(polarizability):
+        pol_identity = polarizability * xp.eye(dimensions)[None, :, :]
+        polarizability = xp.repeat(pol_identity, num_particles, axis=0)
+    elif polarizability.ndim == 1:
+        polarizability = polarizability[:, None, None] * xp.eye(dimensions)[None, :, :]
+    elif polarizability.ndim == 3 and polarizability.shape[1] == dimensions and polarizability.shape[2] == dimensions:
+        pass
+    else:
+        raise ValueError("Invalid polarizability shape. Expected scalar, 1D array of length N, or 3D array of shape (N, d, d). Got {}".format(polarizability.shape))

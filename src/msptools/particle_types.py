@@ -2,10 +2,6 @@ from .polarizability_mod import *
 from .tools.unit_calcs import *
 from .permittivity import permittivity_ridx
 from typing import List, Tuple, Self, Callable
-try:
-    import cupy as np
-except:
-    import numpy as np
 
 class ParticleType:
     """Class representing a type of particle with specific properties."""
@@ -24,10 +20,12 @@ class SphereType(ParticleType):
         if polarizability is not None:
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
-    def compute_polarizability(self, frequency: float, medium_permittivity: float):
-        self.polarizability = Mie_electric_dipole_polarizability(radius=self.radius,
+    def compute_polarizability(self, frequency: float, medium_permittivity: float, dim: int = 3) -> complex:
+        scalar_polarizability = Mie_electric_dipole_polarizability(radius=self.radius,
                                   medium_permittivity=medium_permittivity,
                                   particle_permittivity=permittivity_ridx(frequency, self.material),
                                   wave_number=frequency_to_wavenumber_nm(frequency))
+        self.polarizability = scalar_polarizability
+        
     
 

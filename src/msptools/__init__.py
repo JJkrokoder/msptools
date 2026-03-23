@@ -10,8 +10,9 @@ from .field_mod import *
 from .tools.unit_calcs import *
 from .GreenTensor_Electric import *
 from .MSP import *
+from .backend import get_backend
+from numpy.typing import ArrayLike, NDArray
 from typing import List
-
 
 __all__ = [
     "OFO_calculations",
@@ -29,9 +30,36 @@ __all__ = [
 class System:
     """Class representing a Optical_Forces physical system containing particles."""
 
-    def __init__(self, particle_types : ParticleType | List[ParticleType], field: Field, positions_unit: str, medium_permittivity: float = 1.0) -> None:
+    def __init__(self, device: str = "GPU") -> None:
+        """Initialize a System object by specifying the device to use for calculations."""
+        
+        print(f"Initializing System with device: {device}")
+        if device not in ["GPU", "CPU"]:
+            raise ValueError("Invalid device specified. Use 'GPU' or 'CPU'.")
+        elif device == "GPU":
+            try:
+                import cupy as xp
+            except ImportError:
+                print("CuPy is not available. Falling back to CPU.")
+                import numpy as xp
+        else:
+            import numpy as xp
+        self.xp = xp
+
+    def set_system(self, particle_types : ParticleType | List[ParticleType], field: Field, positions_unit: str, medium_permittivity: float = 1.0) -> None:
         """
-        Initialize a System object by specifying the particle types, the field and the medium permittivity.
+        Set a System object by specifying the particle types, the field and the medium permittivity.
+        
+        Parameters
+        ----------
+        particle_types :
+            The type(s) of the particles in the system. This can be a single ParticleType or a list of ParticleType objects.
+        field :
+            The field in which the particles are placed. This should be an instance of the Field class.
+        positions_unit :
+            The unit of the positions of the particles. This should be a string representing a unit of length (e.g., 'nm', 'um', 'm').
+        medium_permittivity :
+            The permittivity of the medium in which the particles are placed. This should be a float.
         """
         if not isinstance(particle_types, list):
             particle_types = [particle_types]
@@ -40,14 +68,14 @@ class System:
         self.field.set_medium_permittivity(medium_permittivity)
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
-        self.particles = Particles()
-        self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.get_frequency()) * np.sqrt(self.medium_permittivity)
+        self.particles = Particles(self.xp)
+        self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.frequency_eV) * self.xp.sqrt(self.medium_permittivity)
 
         for ptype in self.particle_types:
-            ptype.compute_polarizability(frequency = self.field.get_frequency(), medium_permittivity=self.medium_permittivity)
+            ptype.compute_polarizability(frequency = self.field.frequency_eV, medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
-                     positions: np.ndarray | List[float] | List[List[float]],
+                     positions: ArrayLike,
                      particle_type: ParticleType | None = None) -> None:
         """
         Add particles to the system at specified positions.
@@ -68,44 +96,42 @@ class System:
         if particle_type is not None and particle_type not in self.particle_types:
             raise ValueError("The specified particle type is not part of the system's types.")
 
-        positions = np.array(positions)* get_multiplier_nanometers(self.positions_unit)
+        positions = positions* get_multiplier_nanometers(self.positions_unit)
         if positions.ndim == 1:
-            positions = [[pos] for pos in positions.flatten().tolist()]
-        elif positions.ndim == 2:
-            positions = positions.tolist() 
-        else:
-            raise ValueError("Positions must be a 1D-three-element or 2D array-like.")
-
-        polarizability = particle_type.polarizability
+            positions = self.xp.array(positions)
+ 
+        polarizability = polarizability_to_matrix(particle_type.polarizability, positions.shape[0], 3, self.xp)
+        print(f"positions type: {type(positions)}, shape: {positions.shape}")
+        print(f"polarizability type: {type(polarizability)}")
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
-    def get_field_in_particles(self) -> np.ndarray:
+    def get_field_in_particles(self, method : str = 'Inverse') -> ArrayLike:
         """
         Get the electric field at specified positions by solving the Multiple Scattering Problem (MSP).
 
         Returns
         -------
-        np.ndarray
+        xp.ndarray
             The electric field at the specified positions.
         """
         
-
-        external_field = self.field.get_external_field_in_positions(self.particles.get_positions())
-        green_tensor = construct_green_tensor(self.particles.get_positions(), self.medium_wave_number_nm)
+        positions = self.particles.positions
+        external_field = self.field.get_external_field_in_positions(positions)
+        green_tensor = construct_green_tensor(positions, self.medium_wave_number_nm)
         field_solution = solve_MSP_from_arrays(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
                                    green_tensor=green_tensor,
-                                   method='Iterative')
+                                   method=method)
         return field_solution
     
-    def get_field_gradient_in_particles(self, current_field: np.ndarray) -> np.ndarray:
+    def get_field_gradient_in_particles(self, current_field: ArrayLike) -> ArrayLike:
         """
         Get the electric field gradient at specified positions by solving the Multiple Scattering Problem (MSP) for the gradient.
 
         Returns
         -------
-        np.ndarray
+        ArrayLike
             The electric field gradient at the specified positions.
         """
         
@@ -119,7 +145,7 @@ class System:
                                                      green_tensor_derivative=green_tensor_derivative)
         return gradient_solution
     
-    def set_position(self, index: int, position: np.ndarray[int, 3] | List[float]) -> None:
+    def set_position(self, index: int, position: ArrayLike) -> None:
         """
         Set the position of a particle at a specified index.
 
@@ -131,7 +157,7 @@ class System:
         position :
             The new position of the particle. This can be a 1D-three-element array-like.
         """
-        position = np.array(position)* get_multiplier_nanometers(self.positions_unit)
+        position = xp.array(position)* get_multiplier_nanometers(self.positions_unit)
         if position.ndim != 1 or position.shape[0] != 3:
             raise ValueError("Position must be a 1D-three-element array-like.")
         self.particles.set_position(index, position.tolist())
@@ -147,13 +173,13 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self) -> np.ndarray:
+    def compute_forces(self) -> xp.ndarray:
         """
         Compute the optical forces on particles at specified positions.
 
         Returns
         -------
-        np.ndarray
+        xp.ndarray
             The computed optical forces on the particles.
         """
 

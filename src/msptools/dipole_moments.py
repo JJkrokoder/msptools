@@ -1,48 +1,27 @@
-try:
-    import cupy as np
-except ImportError:
-    import numpy as np
-from typing import List
-
-def calculate_dipole_moments_linear(polarizability: np.ndarray | complex | List[complex] | float | List[float],
-                                    electric_field : np.ndarray) -> np.ndarray:
-    
-    
-    if isinstance(polarizability, (complex, float, int)):
-        polarizability += 0j  # Ensure polarizability is treated as a complex number
-        dipole_moments = polarizability * electric_field
-    elif isinstance(polarizability, (list, np.ndarray)):
-        number_of_polarizabilities = len(polarizability) if isinstance(polarizability, list) else polarizability.shape[0]
-        if number_of_polarizabilities != electric_field.shape[0]:
-            raise ValueError("Polarizability and electric field must have the same number of elements.")
-        dipole_moments = np.array([polarizability[i] * electric_field[i,:] for i in range(number_of_polarizabilities)])
-    else:
-        raise TypeError("Polarizability must be a complex number, float, int, list, or numpy array.")
+from .backend import get_backend
+from numpy.typing import ArrayLike
 
 
-    return dipole_moments
-
-def polarizability_to_matrix(polarizability, num_particles : int, dimensions : int) -> np.ndarray:
+def calculate_dipole_moments_linear(polarizability: ArrayLike,
+                                    electric_field : ArrayLike) -> ArrayLike:
     """
-    Convert polarizability to a matrix form suitable for calculations.
+    Calculate the dipole moments of particles in an electric field using a linear polarizability model.
     
     Parameters
     ----------
-    polarizability : complex, float, int, list, or np.ndarray
-        The polarizability value(s).
-    num_particles :
-        The number of particles in the system.
-    dimensions :
-        The number of dimensions of the system.
+    polarizability :
+        The polarizability of the particles. This is in general an (N, d, d) array, where N is the number of particles and d is the dimensionality of the system. It can also be a scalar (complex, float, or int) which will be applied to all particles.
+    electric_field :
+        The electric field at the location of the particles. This should be an array of shape (N, d), where N is the number of particles and d is the dimensionality of the system.
     
     Returns
     -------
-    np.ndarray
-        A matrix representation of the polarizability.
+    ArrayLike
+        An array of shape (N, d) representing the dipole moments of the particles.
     """
     
-    if isinstance(polarizability, (complex, float, int)):
-        return np.eye(dimensions*num_particles) * polarizability
+    xp = get_backend(electric_field)
+    dipole_moments = xp.einsum('ikl,il->ik', polarizability, electric_field)
 
-    elif isinstance(polarizability, (list, np.ndarray)):
-       return np.diag([polarizability[i] for i in range(num_particles) for _ in range(dimensions)])
+
+    return dipole_moments

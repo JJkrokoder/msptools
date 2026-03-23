@@ -1,9 +1,8 @@
-try :
-    import cupy as np
-except ImportError:
-    import numpy as np
+from .backend import get_backend
+from numpy.typing import ArrayLike
+import numpy as np
 
-def G_0_function(r: float, wave_number: float) -> complex:
+def G_0_function(r: float | ArrayLike, wave_number: float) -> complex:
     """
     Computes the G_0 function for a given distance r and wave number.
 
@@ -19,10 +18,20 @@ def G_0_function(r: float, wave_number: float) -> complex:
     complex
         The value of the G_0 function.
     """
+    if isinstance(r, (float, int)):
+        xp = np
+    else:
+        xp = get_backend(r)
+    # ensure that the elements where r is zero have result 0 instead of inf or NaN
+    result = xp.exp(1j * wave_number * r) / (4 * xp.pi * r) * (1 + 1j/(wave_number * r) - 1/(wave_number * r)**2)
+    # Set the result to 0 where r is 0
+    if isinstance(r, (float, int)):
+        result = 0 if r == 0 else result
+    else:
+        result = xp.where(r == 0, 0, result)
+    return result
 
-    return np.exp(1j * wave_number * r) / (4 * np.pi * r) * (1 + 1j/(wave_number * r) - 1/(wave_number * r)**2)
-
-def G_1_function(r: float, wave_number: float) -> complex:
+def G_1_function(r: float | ArrayLike, wave_number: float) -> complex:
     """
     Computes the G_1 function for a given distance r and wave number.
 
@@ -38,10 +47,19 @@ def G_1_function(r: float, wave_number: float) -> complex:
     complex
         The value of the G_1 function.
     """
+    if isinstance(r, (float, int)):
+        xp = np
+    else:
+        xp = get_backend(r)
+    result = -xp.exp(1j * wave_number * r) / (4 * xp.pi * r**3) * (1 + 3j/(wave_number * r) - 3/(wave_number * r)**2)
+        # Set the result to 0 where r is 0
+    if isinstance(r, (float, int)):
+        result = 0 if r == 0 else result
+    else:
+        result = xp.where(r == 0, 0, result)
+    return result
 
-    return -np.exp(1j * wave_number * r) / (4 * np.pi * r) * (1 + 3j/(wave_number * r) - 3/(wave_number * r)**2) / r**2
-
-def G_0_derivative_function(r: float, wave_number: float) -> complex:
+def G_0_derivative_function(r: float | ArrayLike, wave_number: float) -> complex:
     """
     Computes the derivative of the G_0 function with respect to r.
 
@@ -57,11 +75,14 @@ def G_0_derivative_function(r: float, wave_number: float) -> complex:
     complex
         The value of the derivative of the G_0 function.
     """
-    
-    return wave_number * np.exp(1j * wave_number * r) / (4 * np.pi * r) * \
+    if isinstance(r, (float, int)):
+        xp = np
+    else:
+        xp = get_backend(r)
+    return wave_number * xp.exp(1j * wave_number * r) / (4 * xp.pi * r) * \
            (1j - 2/(wave_number * r) - 3j/(wave_number * r)**2 + 3/(wave_number * r)**3)
 
-def G_1_derivative_function(r: float, wave_number: float) -> complex:
+def G_1_derivative_function(r: float | ArrayLike, wave_number: float) -> complex:
     """
     Computes the derivative of the G_1 function with respect to r.
 
@@ -77,19 +98,22 @@ def G_1_derivative_function(r: float, wave_number: float) -> complex:
     complex
         The value of the derivative of the G_1 function.
     """
-    
-    return -wave_number * np.exp(1j * wave_number * r) / (4 * np.pi * r**3) * \
+    if isinstance(r, (float, int)):
+        xp = np
+    else:
+        xp = get_backend(r)
+    return -wave_number * xp.exp(1j * wave_number * r) / (4 * xp.pi * r**3) * \
            (1j - 6/(wave_number * r) - 15j/(wave_number * r)**2 + 15/(wave_number * r)**3)
 
-def v_cross_derivative(r_vec: np.ndarray, coordinate: int) -> np.ndarray:
+def v_cross_derivative(r_vec: ArrayLike, coordinate: int) -> np.ndarray:
     """
     Computes the derivative of a vector cross dyadic product with respect to a specific coordinate.
 
     Parameters
     ----------
-    r_vec : np.ndarray
+    r_vec : 
         The vector for which the derivative is computed.
-    coordinate : int
+    coordinate : 
         The coordinate with respect to which the derivative is taken (0, 1, or 2).
 
     Returns
@@ -97,12 +121,13 @@ def v_cross_derivative(r_vec: np.ndarray, coordinate: int) -> np.ndarray:
     np.ndarray
         The derivative of the cross product with respect to the specified coordinate.
     """
+    xp = get_backend(r_vec)
 
     dimensions = r_vec.shape[0]
     if coordinate < 0 or coordinate >= dimensions:
         raise ValueError("Coordinate must be in the range [0, {}]".format(dimensions - 1))
 
-    der_R_cross = np.zeros((dimensions, dimensions))
+    der_R_cross = xp.zeros((dimensions, dimensions))
 
     for i in range(dimensions):
         if i == coordinate:
@@ -129,44 +154,17 @@ def construct_green_tensor(positions : np.ndarray, wave_number: float) -> np.nda
     np.ndarray
         Green's tensor of shape (num_particles, num_particles, dimension, dimension).
     """
+    xp = get_backend(positions)
+    dimensions = positions.shape[1]
+    rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
+    distances = xp.linalg.norm(rel_vec_matrix, axis=-1)
+    G_0_matrix = G_0_function(distances, wave_number)
+    G_1_matrix = G_1_function(distances, wave_number)
+    R_cross_matrix = rel_vec_matrix[:, :, :, None] * rel_vec_matrix[:, :, None, :]
+    green_tensor = G_0_matrix[:, :, None, None] * xp.eye(dimensions) + G_1_matrix[:, :, None, None] * R_cross_matrix
     
-    num_particles, dimensions = positions.shape
-    green_tensor = np.zeros((num_particles, num_particles, dimensions, dimensions), dtype=np.complex128)
-
-    for i in range(num_particles):
-        for j in range(i + 1, num_particles):
-            green_tensor[i, j, :, :] = pair_green_tensor(positions[i], positions[j], wave_number)
-            green_tensor[j, i, :, :] = green_tensor[i, j, :, :]
     return green_tensor
 
-def pair_green_tensor(pos_i: np.ndarray, pos_j: np.ndarray, wave_number: float) -> np.ndarray:
-    """
-    Constructs the pair Green's tensor for two particles at positions pos_i and pos_j.
-
-    Parameters
-    ----------
-    pos_i : np.ndarray
-        Position of the first particle.
-    pos_j : np.ndarray
-        Position of the second particle.
-    wave_number : float
-        The wave number.
-
-    Returns
-    -------
-    np.ndarray
-        Pair Green's tensor of shape (dimension, dimension).
-    """
-    dimensions = pos_i.shape[0]
-    R_vec = pos_i - pos_j
-    r = np.linalg.norm(R_vec)
-
-    g_0 = G_0_function(r, wave_number)
-    g_1 = G_1_function(r, wave_number)
-
-    R_cross = R_vec[:, None] @ R_vec[None, :]
-
-    return g_0 * np.eye(dimensions) + g_1 * R_cross
 
 def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinate : int,  wave_number: float):
     """
@@ -188,10 +186,10 @@ def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinat
     np.ndarray
         Derivative of the pair Green's tensor with respect to the specified coordinate.
     """
-    
+    xp = get_backend(pos_i)
     dimensions = pos_i.shape[0]
     R_vec = pos_i - pos_j
-    r = np.linalg.norm(R_vec)
+    r = xp.linalg.norm(R_vec)
 
     g_1 = G_1_function(r, wave_number)
     der_g_0 = G_0_derivative_function(r, wave_number) * R_vec[coordinate] / r
@@ -199,7 +197,7 @@ def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinat
     R_cross = R_vec[:, None] @ R_vec[None, :]
     der_R_cross = v_cross_derivative(R_vec, coordinate)
 
-    derivative_tensor = der_g_0 * np.eye(dimensions) + der_g_1 * R_cross + g_1 * der_R_cross
+    derivative_tensor = der_g_0 * xp.eye(dimensions) + der_g_1 * R_cross + g_1 * der_R_cross
     
     return derivative_tensor 
 
@@ -219,9 +217,10 @@ def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) 
     np.ndarray
         Derivative of Green's tensor of shape (num_particles, num_particles, dimension, dimension, dimension).
     """
+    xp = get_backend(positions)
     
     num_particles, dimensions = positions.shape
-    green_tensor_derivative = np.zeros((num_particles, num_particles, dimensions, dimensions, dimensions), dtype=np.complex128)
+    green_tensor_derivative = xp.zeros((num_particles, num_particles, dimensions, dimensions, dimensions), dtype=xp.complex128)
 
     for i in range(num_particles):
         for j in range(i + 1, num_particles):
