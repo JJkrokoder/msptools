@@ -28,8 +28,7 @@ class TestSystem:
         system.add_particles(positions, particle_type=type1)
         
         assert len(system.particles.positions) == 2, "There should be two particles in the system"
-        assert all(isinstance(pos, list) for pos in system.particles.positions), "Positions should be stored as lists"
-    
+        
     def test_get_field_in_particles(self):
         field = msp.PlaneWaveField(direction=np.array([0, 0, 1]), wavelength=1.0, wavelength_unit="um", amplitude= 1.0, polarization=np.array([1.0, 0.0, 0.0]))
         type1 = msp.SphereType(radius=1.0, material="Au", radius_unit="nm")

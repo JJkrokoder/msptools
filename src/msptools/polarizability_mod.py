@@ -159,3 +159,5 @@ def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, 
         pass
     else:
         raise ValueError("Invalid polarizability shape. Expected scalar, 1D array of length N, or 3D array of shape (N, d, d). Got {}".format(polarizability.shape))
+
+    return polarizability

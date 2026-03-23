@@ -19,7 +19,7 @@ class Particles:
         self.xp = xp
         self.dim = dim
         self.positions = self.xp.empty((0, self.dim))
-        self.polarizabilities = self.xp.empty((0))
+        self.polarizabilities = self.xp.empty((0, self.dim, self.dim))
 
 
     def add_particles(self,
@@ -47,7 +47,7 @@ class Particles:
         """
 
         self.positions = self.xp.empty((0, self.dim))
-        self.polarizabilities = self.xp.empty((0))  # Reset polarizabilities to an empty array with shape (0)
+        self.polarizabilities = self.xp.empty((0, self.dim, self.dim))  # Reset polarizabilities to an empty array with shape (0, dim, dim)
 
 
     def _calculate_polarizabilities(self) -> None:

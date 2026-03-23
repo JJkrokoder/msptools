@@ -102,7 +102,7 @@ class System:
  
         polarizability = polarizability_to_matrix(particle_type.polarizability, positions.shape[0], 3, self.xp)
         print(f"positions type: {type(positions)}, shape: {positions.shape}")
-        print(f"polarizability type: {type(polarizability)}")
+        print(f"polarizability type: {type(polarizability)}, shape: {polarizability.shape}")
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
     def get_field_in_particles(self, method : str = 'Inverse') -> ArrayLike:
