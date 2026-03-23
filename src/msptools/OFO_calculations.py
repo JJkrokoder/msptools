@@ -1,7 +1,8 @@
 from typing import Iterable
-import numpy as np
+from .backend import get_backend
+from numpy.typing import ArrayLike
 
-def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndarray, field_gradient: np.ndarray) -> np.ndarray:
+def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: ArrayLike, field_gradient: ArrayLike) -> ArrayLike:
     """
     Calculate the force on a set of dipoles in an electric field gradient.
 
@@ -27,8 +28,9 @@ def calculate_forces_eppgrad(medium_permittivity: float, dipole_moments: np.ndar
         F = (ε/2) * Re{ p · ∇E* }
     where ε is the medium permittivity, p is the dipole moment, and ∇E* is the complex conjugate of the electric field gradient.
     """
+    xp = get_backend(dipole_moments)
 
-    forces = (medium_permittivity / 2) * np.real(np.einsum('im,inm->in', dipole_moments, np.conj(field_gradient)))
+    forces = (medium_permittivity / 2) * xp.real(xp.einsum('im,inm->in', dipole_moments, xp.conj(field_gradient)))
 
     return forces
 

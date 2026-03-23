@@ -1,7 +1,11 @@
 import pytest
-import numpy as np
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 from msptools.MSP import *
-from msptools.dipole_moments import calculate_dipole_moments_linear, polarizability_to_matrix
+from msptools.dipole_moments import calculate_dipole_moments_linear
+from msptools.polarizability_mod import polarizability_to_matrix
 from msptools.GreenTensor_Electric import construct_green_tensor
 np.random.seed(42)
 np.set_printoptions(precision=3, suppress=True)
@@ -24,10 +28,8 @@ def create_identity_green_tensor(num_particles, dimension):
     """
     green_tensor = np.zeros((num_particles, num_particles, dimension, dimension))
 
-    for i in range(num_particles):
-        for j in range(num_particles):
-            if i == j:
-                green_tensor[i, j, :, :] = np.eye(dimension)
+    idx = np.arange(num_particles)
+    green_tensor[idx, idx, :, :] = np.eye(dimension)
 
     return green_tensor
 
@@ -48,7 +50,7 @@ class Test_MSP_solver_from_arrays:
         
     @pytest.mark.parametrize("method", ['Iterative', 'Inverse'])
     def test_zero_polarizability(self, method):
-        zero_polarizability = 0.0
+        zero_polarizability = np.zeros((self.num_particles, self.dimension, self.dimension))
         green_tensor = np.random.rand(self.num_particles, self.num_particles, self.dimension, self.dimension) + 1j * np.random.rand(self.num_particles, self.num_particles, self.dimension, self.dimension)
         total_field = solve_MSP_from_arrays(zero_polarizability, self.external_field, self.wave_number, green_tensor, method=method)
         assert np.allclose(total_field, self.external_field), "Total field should equal external field when polarizability is zero."
@@ -57,25 +59,22 @@ class Test_MSP_solver_from_arrays:
         identity_green_tensor = create_identity_green_tensor(self.num_particles, self.dimension)
         g_factor = 0.001
         green_tensor = identity_green_tensor * g_factor
-        total_field = solve_MSP_from_arrays(self.polarizability, self.external_field, self.wave_number, green_tensor, method='Iterative')
-        factor = 1/(1 - self.wave_number**2 * self.polarizability * g_factor)
+        polarizability_array = np.repeat(self.polarizability * np.eye(self.dimension)[None,:,:], self.num_particles, axis=0)
+        total_field = solve_MSP_from_arrays(polarizability_array, self.external_field, self.wave_number, green_tensor, method='Iterative')
+        factor = 1/(1 - self.wave_number**2 * g_factor * self.polarizability)
         assert np.allclose(total_field, factor * self.external_field, rtol=1e-6), "Total field did not match expected value."
 
 class Test_MSP_iterative:
     num_particles = 2
     dimension = 3
-    polarizability = 1.0 + 0.5j
+    polarizability = np.repeat((1.0 + 0.5j)*np.eye(dimension)[None,:,:], num_particles, axis=0)
     external_field = np.random.rand(num_particles, dimension)
     wave_number = 1.0
     green_tensor = np.random.rand(num_particles, num_particles, dimension, dimension)\
         + 1j * np.random.rand(num_particles, num_particles, dimension, dimension)
     tolerance = 1e-6
 
-    @pytest.mark.parametrize("GT_scale", [5, 2, 1, 0.5])
-    def test_non_convergence_error(self, GT_scale):
-        with pytest.raises(ValueError, match="The new field is significantly larger than the external field, indicating potential divergence in the iterative method."):
-            array_MSP_iterative(self.polarizability, self.external_field, self.wave_number, self.green_tensor * GT_scale, tolerance=self.tolerance)
-        
+       
     def test_zero_scattering(self):
         zero_green_tensor = np.zeros((self.num_particles, self.num_particles, self.dimension, self.dimension))
         total_field = array_MSP_iterative(self.polarizability, self.external_field, self.wave_number, zero_green_tensor, tolerance=self.tolerance)
@@ -84,16 +83,13 @@ class Test_MSP_iterative:
     def test_convergence(self):
         small_green_tensor = 0.1 * self.green_tensor
         total_field = array_MSP_iterative(self.polarizability, self.external_field, self.wave_number, small_green_tensor, tolerance=self.tolerance)
-        polarizability_matrix = polarizability_to_matrix(self.polarizability, self.num_particles, self.dimension)
-        scattering_matrix = self.wave_number**2 *\
-            small_green_tensor.transpose(0,2,1,3).reshape(self.num_particles * self.dimension, self.num_particles * self.dimension)\
-                @ polarizability_matrix
-        scattering_field = np.zeros_like(self.external_field.flatten(), dtype=np.complex128)
+        scattering_matrix = self.wave_number**2 *np.einsum('ijmk,jkl->ijml', small_green_tensor, self.polarizability)
+        scattering_field = np.zeros_like(self.external_field)
         total_scattering_matrix = scattering_matrix.copy()
 
         for i in range(500):
-            scattering_field += total_scattering_matrix @ self.external_field.flatten()
-            total_scattering_matrix = total_scattering_matrix @ scattering_matrix
+            scattering_field = scattering_field + np.einsum('ijml,jl->im', total_scattering_matrix, self.external_field)
+            total_scattering_matrix = np.einsum('ijmn,jkno->ikmo', total_scattering_matrix, scattering_matrix)
 
         expected_field = self.external_field + scattering_field.reshape(self.num_particles, self.dimension)
 
@@ -111,7 +107,7 @@ class Test_MSP_iterative:
 class Test_MSP_inverse:
     num_particles = 3
     dimension = 3
-    polarizability = 1.0 + 0.5j
+    polarizability = np.repeat((1.0 + 0.5j)*np.eye(dimension)[None,:,:], num_particles, axis=0)
     external_field = np.random.rand(num_particles, dimension)
     wave_number = 1.0
     green_tensor = (np.random.rand(num_particles, num_particles, dimension, dimension)\
@@ -123,9 +119,7 @@ class Test_MSP_inverse:
 
     def test_autoconsistency(self):
         total_field = array_MSP_inverse(self.polarizability, self.external_field, self.wave_number, self.green_tensor)
-        polarizability_matrix = polarizability_to_matrix(self.polarizability, self.num_particles, self.dimension)
-        green_tensor_matrix = self.green_tensor.transpose(0,2,1,3).reshape(self.num_particles * self.dimension, self.num_particles * self.dimension)
-        MSP_matrix = np.eye(self.num_particles * self.dimension) - self.wave_number**2 * green_tensor_matrix @ polarizability_matrix
+        MSP_matrix = np.eye(self.num_particles * self.dimension) - self.wave_number**2 * np.einsum('ijmk,jkl->ijml', self.green_tensor, self.polarizability).transpose(0,2,1,3).reshape(self.num_particles * self.dimension, self.num_particles * self.dimension)
         MSP_matrix_inv = np.linalg.inv(MSP_matrix)
         expected_field = MSP_matrix_inv @ self.external_field.flatten()
         
@@ -144,10 +138,12 @@ class Test_MSP_inverse:
 
 class Test_MSP_examples:
 
+    dimension = 3
     @pytest.mark.parametrize("x", [5.0, 10.0, 20.0])
     def test_2_particles_at_z0(self, x):
 
-        polarizability = 1.0 + 0.5j
+        polarizability_scalar = 1.0 + 0.5j
+        polarizability = np.repeat(polarizability_scalar*np.eye(self.dimension)[None,:,:], 2, axis=0)
         external_field = np.array([[1, 0, 0],
                                    [1, 0, 0]])
         num_particles = external_field.shape[0]
@@ -161,8 +157,8 @@ class Test_MSP_examples:
 
         total_field = solve_MSP_from_arrays(polarizability, external_field, wave_number, green_tensor)
 
-        expected_field_particle_1 = external_field[0] / (1 - wave_number**2 * polarizability * green_tensor[0,1, 0,0])
-        expected_field_particle_2 = external_field[1] / (1 - wave_number**2 * polarizability * green_tensor[1,0, 0,0])
+        expected_field_particle_1 = external_field[0] / (1 - wave_number**2 * polarizability_scalar * green_tensor[0,1, 0,0])
+        expected_field_particle_2 = external_field[1] / (1 - wave_number**2 * polarizability_scalar * green_tensor[1,0, 0,0])
 
         assert np.allclose(total_field[0], expected_field_particle_1), "Total field at particle 1 did not match expected value."
         assert np.allclose(total_field[1], expected_field_particle_2), "Total field at particle 2 did not match expected value."

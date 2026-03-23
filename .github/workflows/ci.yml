@@ -15,7 +15,7 @@ jobs:
     - name: Setup Micromamba
       uses: mamba-org/setup-micromamba@v2
       with:
-        environment-file: environment.yml
+        environment-file: environment-nocuda.yml
         environment-name: msptools
         cache-environment: true
         init-shell: bash

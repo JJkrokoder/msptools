@@ -1,4 +1,8 @@
-import numpy as np
+
+try:
+    import cupy as np
+except ImportError:
+    import numpy as np
 from msptools.OFO_calculations import *
 import pytest
 
