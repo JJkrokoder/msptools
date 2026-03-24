@@ -135,8 +135,8 @@ def array_MSP_inverse(polarizability : ArrayLike,
 
         MSP_matrix = xp.eye(num_particles * dimensions) - scattering_matrix.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
         
-        MSP_matrix_inv = xp.linalg.inv(MSP_matrix)
-        total_field = MSP_matrix_inv @ external_field.flatten()
+        print(f"Using backend: {xp.__name__} for MSP inverse solution.")
+        total_field = xp.linalg.solve(MSP_matrix, external_field.flatten())
         total_field = total_field.reshape(num_particles, dimensions)
         return total_field
 
