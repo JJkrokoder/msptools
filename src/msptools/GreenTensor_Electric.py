@@ -1,63 +1,68 @@
 from .backend import get_backend
 from numpy.typing import ArrayLike
 import numpy as np
+from scipy.constants import pi
+from cmath import exp
 
-def G_0_function(r: float | ArrayLike, wave_number: float) -> complex:
+def G_0_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLike:
     """
     Computes the G_0 function for a given distance r and wave number.
 
     Parameters
     ----------
-    r : float
+    r :
         The distance between two points.
-    wave_number : float
+    wave_number :
         The wave number.
 
     Returns
     -------
-    complex
+    complex | ArrayLike
         The value of the G_0 function.
     """
     if isinstance(r, (float, int)):
-        xp = np
+        if r > 0:
+            kr = wave_number * r
+            return exp(1j * wave_number * r) / (4 * pi * r) * (1 + 1j/kr - 1/kr**2)
+        else:
+            return 0.0j
     else:
         xp = get_backend(r)
-    # ensure that the elements where r is zero have result 0 instead of inf or NaN
-    result = xp.exp(1j * wave_number * r) / (4 * xp.pi * r) * (1 + 1j/(wave_number * r) - 1/(wave_number * r)**2)
-    # Set the result to 0 where r is 0
-    if isinstance(r, (float, int)):
-        result = 0 if r == 0 else result
-    else:
-        result = xp.where(r == 0, 0, result)
-    return result
+        mask = r > 0
+        result = xp.zeros_like(r, dtype=complex)
+        kr = wave_number * r[mask]
+        result[mask] = xp.exp(1j * kr) / (4 * pi * r[mask]) * (1 + 1j/kr - 1/kr**2)
+        return result
 
-def G_1_function(r: float | ArrayLike, wave_number: float) -> complex:
+def G_1_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLike:
     """
     Computes the G_1 function for a given distance r and wave number.
 
     Parameters
     ----------
-    r : float
+    r :
         The distance between two points.
-    wave_number : float
+    wave_number :
         The wave number.
 
     Returns
     -------
-    complex
+    complex | ArrayLike
         The value of the G_1 function.
     """
     if isinstance(r, (float, int)):
-        xp = np
+        if r > 0:
+            kr = wave_number * r
+            return -exp(1j * wave_number * r) / (4 * pi * r**3) * (1 + 3j/kr - 3/kr**2)
+        else:
+            return 0.0j
     else:
         xp = get_backend(r)
-    result = -xp.exp(1j * wave_number * r) / (4 * xp.pi * r**3) * (1 + 3j/(wave_number * r) - 3/(wave_number * r)**2)
-        # Set the result to 0 where r is 0
-    if isinstance(r, (float, int)):
-        result = 0 if r == 0 else result
-    else:
-        result = xp.where(r == 0, 0, result)
-    return result
+        mask = r > 0
+        result = xp.zeros_like(r, dtype=complex)
+        kr = wave_number * r[mask]
+        result[mask] = -xp.exp(1j * kr) / (4 * xp.pi * r[mask]**3) * (1 + 3j/kr - 3/kr**2)
+        return result
 
 def G_0_derivative_function(r: float | ArrayLike, wave_number: float) -> complex:
     """
