@@ -70,7 +70,6 @@ class System:
         self.positions_unit = positions_unit
         self.particles = Particles(self.xp)
         self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.frequency_eV) * self.xp.sqrt(self.medium_permittivity)
-
         for ptype in self.particle_types:
             ptype.compute_polarizability(frequency = self.field.frequency_eV, medium_permittivity=self.medium_permittivity)
     
@@ -135,8 +134,8 @@ class System:
             The electric field gradient at the specified positions.
         """
         
-        external_gradient = self.field.get_external_gradient_in_positions(self.particles.get_positions())
-        green_tensor_derivative = construct_green_tensor_gradient(self.particles.get_positions(), self.medium_wave_number_nm)
+        external_gradient = self.field.get_external_gradient_in_positions(self.particles.positions)
+        green_tensor_derivative = construct_green_tensor_gradient(self.particles.positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
         gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
