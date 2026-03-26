@@ -4,6 +4,8 @@ from scipy.special import spherical_jn as sph_jn
 from scipy.special import spherical_yn as sph_yn
 from scipy.constants import pi
 from numpy.typing import ArrayLike
+from .permittivity import permittivity_ridx
+from scipy.constants import c, e, h
 
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
     """Select the polarizability computation method based on the material and excitation wavelength."""  
@@ -160,4 +162,30 @@ def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, 
     else:
         raise ValueError("Invalid polarizability shape. Expected scalar, 1D array of length N, or 3D array of shape (N, d, d). Got {}".format(polarizability.shape))
 
+    return polarizability
+
+def compute_sphere_polarizability_DA(radius_nm: float, medium_permittivity: float, particle_material: str, wavelength_nm: float | ArrayLike) -> complex|ArrayLike:
+    """
+    Compute the polarizability of a spherical particle using the Mie electric dipole formula.
+    
+    Parameters
+    ----------
+    radius_nm :
+        The radius of the spherical particle.
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_material :
+        The material of the particle.
+    wavelength_nm :
+        The wavelength of the incident light in nanometers.
+    
+    Returns
+    -------
+    complex|ArrayLike
+        The polarizability of the spherical particle using the Mie electric dipole formula.
+    """
+    wave_number = 2 * pi / wavelength_nm
+    frequency_eV =  h * c / (wavelength_nm * 1e-9) / e
+    particle_permittivity = permittivity_ridx(frequency_eV, particle_material)
+    polarizability = Mie_electric_dipole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
     return polarizability
