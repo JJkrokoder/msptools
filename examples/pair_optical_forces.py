@@ -10,31 +10,35 @@ x=np.logspace(np.log10(2.02*radius_nm), np.log10(7*radius_nm), 100)
 type1 = msptools.SphereType(material ='Au', radius=radius_nm, radius_unit='nm')
 
 ext_field_s = msptools.PlaneWaveField(wavelength=wavelength_nm, wavelength_unit='nm',
-                                    direction=[0, 0, 1],
-                                    polarization=[0, 1, 0],
+                                    direction=np.array([0, 0, 1]),
+                                    polarization=np.array([0, 1, 0]),
                                     amplitude=1)
 ext_field_p = msptools.PlaneWaveField(wavelength=wavelength_nm, wavelength_unit='nm',
-                                    direction=[0, 0, 1],
-                                    polarization=[1, 0, 0],
+                                    direction=np.array([0, 0, 1]),
+                                    polarization=np.array([1, 0, 0]),
                                     amplitude=1)
+system_s = msptools.System(device = 'CPU')
 
-system_s = msptools.System(medium_permittivity=medium_permittivity,
+system_s.set_system(medium_permittivity=medium_permittivity,
                         particle_types=type1,
                         field=ext_field_s,
                         positions_unit='nm')
-system_p = msptools.System(medium_permittivity=medium_permittivity,
+
+system_p = msptools.System(device = 'CPU')
+system_p.set_system(medium_permittivity=medium_permittivity,
                         particle_types=type1,
                         field=ext_field_p,
                         positions_unit='nm')
 
+print(system_s.medium_permittivity)
 polarizability = system_s.particle_types[0].polarizability
-print(f'Polarizability at {system_s.field.get_wavelength()} nm: {polarizability} nm^3')
+print(f'Polarizability at {system_s.field.wavelength_nm} nm: {polarizability} nm^3')
 
 forces_s_list = []
 forces_p_list = []
 for system in [system_s, system_p]:
     forces_distance = []
-    system.add_particles(positions=[[0, 0, 0], [10, 0, 0]])
+    system.add_particles(positions=np.array([[0, 0, 0], [10, 0, 0]]))
     for dist in x:
         system.particles.set_position(1, [dist, 0, 0])
         forces = msptools.ForceCalculator(system)
@@ -77,7 +81,7 @@ for system in [system_s, system_p]:
     forces_distance = []
     # ensure both particles present and update positions for each distance
     for dist in x_far:
-        system.particles.set_position(1, [dist, 0, 0])
+        system.particles.set_position(1, np.array([dist, 0, 0]))
         forces = msptools.ForceCalculator(system)
         force_values = forces.compute_forces()
         forces_distance.append(force_values)
@@ -105,5 +109,7 @@ plt.title(f'Far-field Optical Forces between two Au NPs ({radius_nm} nm radius) 
 plt.legend()
 plt.grid(True, which="both", ls="--")
 plt.show()
+
+print("Example completed successfully.")
 
 

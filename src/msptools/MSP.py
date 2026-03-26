@@ -34,7 +34,6 @@ def solve_MSP_from_arrays(polarizability: ArrayLike,
 
     """
     
-    print(f"Solving MSP with method '{method}'...")
     
     if green_tensor.ndim != 4 or green_tensor.shape[0] != green_tensor.shape[1] or green_tensor.shape[2] != green_tensor.shape[3]:
         raise ValueError("Invalid green_tensor shape. Expected shape (N, N, d, d), got {}".format(green_tensor.shape))
@@ -129,13 +128,11 @@ def array_MSP_inverse(polarizability : ArrayLike,
         xp = get_backend(external_field)
         num_particles = external_field.shape[0]
         dimensions = external_field.shape[1]
-        print(f"Green tensor shape: {green_tensor.shape}, External field shape: {external_field.shape}, Polarizability shape: {polarizability.shape}")
         
         scattering_matrix = wave_number**2 * xp.einsum('ijmk,jkl->ijml', green_tensor, polarizability)
 
         MSP_matrix = xp.eye(num_particles * dimensions) - scattering_matrix.transpose(0,2,1,3).reshape(num_particles * dimensions, num_particles * dimensions)
         
-        print(f"Using backend: {xp.__name__} for MSP inverse solution.")
         total_field = xp.linalg.solve(MSP_matrix, external_field.flatten())
         total_field = total_field.reshape(num_particles, dimensions)
         return total_field
