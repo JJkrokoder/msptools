@@ -4,14 +4,14 @@ channels:
 
 dependencies:
   - python
-  - pip
   - numpy
   - scipy
-  - pytest
   - cupy
-  - sphinx
-  - matplotlib
+  - pip
   - pip:
+    - pytest
+    - sphinx
+    - matplotlib
     - refractiveindex==1.0.0
 
 

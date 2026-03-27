@@ -27,6 +27,8 @@ Basic usage example:
 
 ## License
 
+This project is liscensed under the MIT License
+
 ## Documentation
 
 Further documentation can be found in: https://msptools.readthedocs.io/en/latest/#msptools

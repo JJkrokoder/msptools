@@ -1,16 +1,16 @@
-name: msptools
+name: msptools-cpu
 channels:
   - conda-forge
 
 dependencies:
   - python
-  - pip
   - numpy
   - scipy
-  - pytest
-  - sphinx
-  - matplotlib
+  - pip
   - pip:
+    - pytest
+    - sphinx
+    - matplotlib
     - refractiveindex==1.0.0
 
 
