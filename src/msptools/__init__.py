@@ -110,7 +110,7 @@ class System:
 
         Returns
         -------
-        xp.ndarray
+        ArrayLike
             The electric field at the specified positions.
         """
         
@@ -156,7 +156,7 @@ class System:
         position :
             The new position of the particle. This can be a 1D-three-element array-like.
         """
-        position = xp.array(position)* get_multiplier_nanometers(self.positions_unit)
+        position = self.xp.array(position)* get_multiplier_nanometers(self.positions_unit)
         if position.ndim != 1 or position.shape[0] != 3:
             raise ValueError("Position must be a 1D-three-element array-like.")
         self.particles.set_position(index, position.tolist())
@@ -172,13 +172,13 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self) -> xp.ndarray:
+    def compute_forces(self) -> ArrayLike:
         """
         Compute the optical forces on particles at specified positions.
 
         Returns
         -------
-        xp.ndarray
+        ArrayLike
             The computed optical forces on the particles.
         """
 
