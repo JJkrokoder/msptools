@@ -12,20 +12,25 @@
 
 ## Installation
 
-Clone the repository and install dependencies:
+To install the package use pip:
 
-To use the code in this repository, follow these steps:
+```bash
+pip install msptools
+```
 
-1. Clone the repository: `git clone https://github.com/JJkrokoder/msptools` or `git clone git@github.com:JJkrokoder/msptools.git`
-2. Install the required dependencies in a new environment: `conda env create -f environment.yml`
-3. Activate the virtual enironment: `conda activate msptools`
-4. Install the package in this environment: `pip install .`
+If you want to install the cupy GPU-accelerated version, use:
+
+```bash
+pip install msptools[gpu]
+```
 
 ## Usage
 
 Basic usage example:
 
 ## License
+
+This project is liscensed under the MIT License
 
 ## Documentation
 
@@ -34,4 +39,7 @@ Further documentation can be found in: https://msptools.readthedocs.io/en/latest
 ## Contact
 
 For questions, issues, or discussions, please use the GitHub Issues page.
+
+![PyPI](https://img.shields.io/pypi/v/msptools)
+![Python](https://img.shields.io/pypi/pyversions/msptools)
 
