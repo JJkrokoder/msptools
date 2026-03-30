@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "msptools"
-version = "0.1.1"
-requires-python = ">=3.8"
+version = "0.1.2"
+requires-python = ">=3.10"
 description = "Tools for Optical Forces Calculation in Multiple Scattering Problems"
 authors = [
     { name = "Joan ronquillo", email = "joan.ronquillo@uam.es" }
@@ -15,7 +15,7 @@ license = { file = "LICENSE" }
 dependencies = [
     "numpy",
     "scipy",
-    "refractiveindex==1.0.0"
+    "refractiveindex>=1.0.2"
 ]
 
 [project.optional-dependencies]

@@ -11,6 +11,6 @@ dependencies:
     - pytest
     - sphinx
     - matplotlib
-    - refractiveindex==1.0.0
+    - refractiveindex==1.0.2
 
 

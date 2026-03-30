@@ -48,8 +48,8 @@ def permittivity_ridx(frequency: float | np.ndarray, material: str) -> complex:
     Material = ridx.RefractiveIndexMaterial(shelf=shelf, book=book, page=page)
     if isinstance(frequency, np.ndarray):
         wavelength_nm = eV_to_nm(frequency)
-        epsilon = np.array([Material.get_epsilon(wavelength_nm=w) for w in wavelength_nm])
+        epsilon = np.array([Material.get_epsilon(wavelength=w) for w in wavelength_nm])
     else:
         wavelength_nm = eV_to_nm(frequency)
-        epsilon = Material.get_epsilon(wavelength_nm=wavelength_nm)
+        epsilon = Material.get_epsilon(wavelength=wavelength_nm)
     return epsilon
