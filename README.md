@@ -10,6 +10,10 @@
 
 - 
 
+## Requirements
+- Python 3.10 or higher
+- pip 26.0 or higher
+
 ## Installation
 
 To install the package use pip:
