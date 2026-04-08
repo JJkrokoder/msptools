@@ -1,7 +1,6 @@
 from .polarizability_mod import *
 from .tools.unit_calcs import *
 from .permittivity import permittivity_ridx
-from typing import List, Tuple, Self, Callable
 
 class ParticleType:
     """Class representing a type of particle with specific properties."""
