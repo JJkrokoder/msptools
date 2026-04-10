@@ -1,8 +1,75 @@
 from .backend import get_backend
 from typing import Iterable
 from numpy.typing import ArrayLike
+import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear
+
+def solve_MSP_wo_green(polarizability : ArrayLike,
+              external_field : ArrayLike,
+              wave_number : float,
+              positions : ArrayLike,
+              method : str = 'GMRES',
+              tolerance : float = 1e-6) -> ArrayLike:
+    """
+    Solve the Multiple Scattering Problem (MSP) without explicitly constructing the Green's tensor.
+    
+    Parameters
+    ----------
+    polarizability :
+        Polarizability of the particles.
+    external_field :
+        External field on particles positions.
+    wave_number :
+        Wave number of the incident wave.
+    positions :
+        Positions of the particles.
+    method :
+        Method to solve the MSP, either 'GMRES' or 'Iterative'.
+    
+    Returns
+    -------
+    xp.ndarray
+        The solution to the MSP.
+    """
+    
+    if method == 'GMRES':
+        return solve_MSP_wo_green_GMRES(polarizability, external_field, wave_number, positions, tolerance)
+    elif method == 'Iterative':
+        return solve_MSP_wo_green_iterative(polarizability, external_field, wave_number, positions, tolerance)
+    else:
+        raise ValueError("Unknown method: {}".format(method))
+    
+def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
+              external_field : ArrayLike,
+              wave_number : float,
+              positions : ArrayLike,
+              tolerance : float = 1e-6,
+              maxiter : int = 500) -> ArrayLike:
+    """
+    Solve the MSP using the GMRES method without explicitly constructing the Green's tensor.
+    """
+    xp = get_backend(external_field)
+    if xp is np:
+        from scipy.sparse.linalg import gmres, LinearOperator
+    else:
+        from cupyx.scipy.sparse.linalg import gmres, LinearOperator
+    num_particles, dimensions = external_field.shape
+    size = num_particles * dimensions
+    E_0_flat = external_field.flatten()
+    def matvec(E_flat):
+        E = E_flat.reshape(num_particles, dimensions)
+        dipole_moments = calculate_dipole_moments_linear(polarizability, E)
+        S = scattering_term(positions, wave_number, dipole_moments)
+        return (E - S).flatten()
+    A = LinearOperator(shape = (size, size), 
+                       matvec=matvec,
+                        dtype=external_field.dtype)
+    solution_flat, info = gmres(A, E_0_flat, tol=tolerance, maxiter=maxiter)
+    if info != 0:
+        print(f"Warning: GMRES did not converge within {maxiter} iterations. Info: {info}")
+    return solution_flat.reshape(num_particles, dimensions)
+    
 
 def solve_MSP_from_arrays(polarizability: ArrayLike,
                           external_field : ArrayLike,
@@ -25,7 +92,7 @@ def solve_MSP_from_arrays(polarizability: ArrayLike,
     green_tensor :
         Green's tensor for the system.
     method :
-        Method to solve the MSP, either 'Iterative' or 'Inverse'. The default is 'Iterative'.
+        Method to solve the MSP, either 'Iterative' or 'Inverse'. The default is 'Inverse'.
 
     Returns
     -------
