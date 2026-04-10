@@ -170,6 +170,37 @@ def construct_green_tensor(positions : np.ndarray, wave_number: float) -> np.nda
     
     return green_tensor
 
+def pairwise_green_tensor(relative_positions : ArrayLike, wave_number: float) -> ArrayLike:
+    """
+    Constructs the pairwise Green's tensor for a given set of relative positions and wave number.
+
+    Parameters
+    ----------
+    relative_positions : ArrayLike
+        Array of shape (num_pairs, dimension) or (dimension,) containing the relative positions between pairs of particles.
+    wave_number : float
+        The wave number.
+
+    Returns
+    -------
+    ArrayLike
+        Pairwise Green's tensor of shape (num_pairs, dimension, dimension).
+    """
+    xp = get_backend(relative_positions)
+    
+    dimensions = relative_positions.shape[-1]
+    
+    distances = xp.linalg.norm(relative_positions, axis=-1)
+    G_0_values = G_0_function(distances, wave_number)
+    G_1_values = G_1_function(distances, wave_number)
+    if relative_positions.ndim == 1:
+        R_cross_values = relative_positions[:, None] * relative_positions[None, :]
+        green_tensor = G_0_values * xp.eye(dimensions) + G_1_values * R_cross_values
+    else:
+        R_cross_values = relative_positions[:, :, None] * relative_positions[:, None, :]
+        green_tensor = G_0_values[:, None, None] * xp.eye(dimensions) + G_1_values[:, None, None] * R_cross_values
+    return green_tensor
+
 
 def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinate : int,  wave_number: float):
     """
@@ -233,4 +264,44 @@ def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) 
                 green_tensor_derivative[i, j, coord, :, :] = pair_green_tensor_derivative(positions[i], positions[j], coord, wave_number)
                 green_tensor_derivative[j, i, coord, :, :] = -green_tensor_derivative[i, j, coord, :, :]
     return green_tensor_derivative
+ 
+
+def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments : ArrayLike) -> ArrayLike:
+    """
+    Compute the scattering term for the MSP without explicitly constructing the Green's tensor.
+
+    Parameters
+    ----------
+    positions :
+        Positions of the particles.
+    wave_number :
+        Wave number of the incident wave.
+    dipole_moments :
+        Dipole moments of the particles.
+        
+    Returns
+    -------
+    xp.ndarray
+        The scattering term for the MSP.
+    """
+    xp = get_backend(positions)
+    num_particles, dimensions = positions.shape
     
+    # Pairwise differences
+    rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
+    
+    # mask self-interactions
+    mask = ~xp.eye(num_particles, dtype=bool)
+    
+    scattering_field = xp.zeros_like(positions, dtype=xp.complex128)
+    
+    for j in range(num_particles):
+        rel_vecs_j = rel_vec_matrix[j][mask[j]]
+        dipoles_l = dipole_moments[mask[j]]
+        
+        G_blocks = pairwise_green_tensor(rel_vecs_j, wave_number)
+        
+        scattering_field[j] = xp.einsum('lnm,lm->n', G_blocks, dipoles_l*wave_number**2)
+    return scattering_field
+
+        
