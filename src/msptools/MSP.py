@@ -4,7 +4,7 @@ from numpy.typing import ArrayLike
 import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear
-from msptools.GreenTensor_Electric import construct_green_tensor, scattering_term
+from msptools.GreenTensor_Electric import construct_green_tensor, scattering_term, scattering_term_batched
 
 def solve_MSP(polarizability : ArrayLike,
               external_field : ArrayLike,
@@ -105,7 +105,7 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
     def matvec(E_flat):
         E = E_flat.reshape(num_particles, dimensions)
         dipole_moments = calculate_dipole_moments_linear(polarizability, E)
-        S = scattering_term(positions, wave_number, dipole_moments)
+        S = scattering_term_batched(positions, wave_number, dipole_moments)
         return (E - S).flatten()
     A = LinearOperator(shape = (size, size), 
                        matvec=matvec, dtype=complex)
