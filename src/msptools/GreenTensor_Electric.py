@@ -159,14 +159,35 @@ def construct_green_tensor(positions : np.ndarray, wave_number: float) -> np.nda
     np.ndarray
         Green's tensor of shape (num_particles, num_particles, dimension, dimension).
     """
-    xp = get_backend(positions)
-    dimensions = positions.shape[1]
+
     rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
-    distances = xp.linalg.norm(rel_vec_matrix, axis=-1)
-    G_0_matrix = G_0_function(distances, wave_number)
-    G_1_matrix = G_1_function(distances, wave_number)
-    R_cross_matrix = rel_vec_matrix[:, :, :, None] * rel_vec_matrix[:, :, None, :]
-    green_tensor = G_0_matrix[:, :, None, None] * xp.eye(dimensions) + G_1_matrix[:, :, None, None] * R_cross_matrix
+    green_tensor = construct_green_tensor_from_rel_vecs(rel_vec_matrix, wave_number)
+    return green_tensor
+    
+
+def construct_green_tensor_from_rel_vecs(rel_vecs : np.ndarray, wave_number: float) -> np.ndarray:
+    """
+    Constructs the Green's tensor for a given set of relative position vectors and wave number.
+
+    Parameters
+    ----------
+    rel_vecs : np.ndarray
+        Array of shape (num_pairs, dimension) containing the relative position vectors between pairs of particles.
+    wave_number : float
+        The wave number.
+
+    Returns
+    -------
+    np.ndarray
+        Green's tensor of shape (num_pairs, dimension, dimension).
+    """
+    xp = get_backend(rel_vecs)
+    dimensions = rel_vecs.shape[-1]
+    distances = xp.linalg.norm(rel_vecs, axis=-1)
+    G_0_values = G_0_function(distances, wave_number)
+    G_1_values = G_1_function(distances, wave_number)
+    R_cross_values = rel_vecs[:, :, :, None] * rel_vecs[:, :, None, :]
+    green_tensor = G_0_values[:, :, None, None] * xp.eye(dimensions) + G_1_values[:, :, None, None] * R_cross_values
     
     return green_tensor
 
@@ -191,14 +212,15 @@ def pairwise_green_tensor(relative_positions : ArrayLike, wave_number: float) ->
     dimensions = relative_positions.shape[-1]
     
     distances = xp.linalg.norm(relative_positions, axis=-1)
+    Identity = xp.eye(dimensions)
     G_0_values = G_0_function(distances, wave_number)
     G_1_values = G_1_function(distances, wave_number)
     if relative_positions.ndim == 1:
         R_cross_values = relative_positions[:, None] * relative_positions[None, :]
-        green_tensor = G_0_values * xp.eye(dimensions) + G_1_values * R_cross_values
+        green_tensor = G_0_values * Identity + G_1_values * R_cross_values
     else:
         R_cross_values = relative_positions[:, :, None] * relative_positions[:, None, :]
-        green_tensor = G_0_values[:, None, None] * xp.eye(dimensions) + G_1_values[:, None, None] * R_cross_values
+        green_tensor = G_0_values[:, None, None] * Identity + G_1_values[:, None, None] * R_cross_values
     return green_tensor
 
 
@@ -286,6 +308,7 @@ def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments :
     """
     xp = get_backend(positions)
     num_particles, dimensions = positions.shape
+    k2 = wave_number**2
     
     # Pairwise differences
     rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
@@ -301,7 +324,42 @@ def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments :
         
         G_blocks = pairwise_green_tensor(rel_vecs_j, wave_number)
         
-        scattering_field[j] = xp.einsum('lnm,lm->n', G_blocks, dipoles_l*wave_number**2)
+        scattering_field[j] = xp.einsum('lnm,lm->n', G_blocks, dipoles_l*k2)
+    return scattering_field
+
+def scattering_term_batched(
+    positions,
+    wave_number,
+    dipole_moments,
+    batch_size: int = 128
+):
+    xp = get_backend(positions)
+    N, d = positions.shape
+    k2 = wave_number**2
+
+    scattering_field = xp.zeros((N, d), dtype=xp.complex128)
+
+    for i0 in range(0, N, batch_size):
+        i1 = min(i0 + batch_size, N)
+
+        # (B, 1, d) - (1, N, d) → (B, N, d)
+        rel_vec = positions[i0:i1, None, :] - positions[None, :, :]
+
+        # Compute Green tensor: (B, N, d, d)
+        G = construct_green_tensor_from_rel_vecs(rel_vec, wave_number)
+
+        # Mask self-interaction ONLY if batch overlaps diagonal
+        if i0 <= i1:
+            idx = xp.arange(i0, i1)
+            G[xp.arange(i1 - i0), idx, :, :] = 0
+
+        # Contract: (B,N,d,d) × (N,d) → (B,d)
+        scattering_field[i0:i1] = k2 * xp.einsum(
+            'ijmn,jn->im',
+            G,
+            dipole_moments
+        )
+
     return scattering_field
 
         
