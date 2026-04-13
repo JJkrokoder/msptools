@@ -100,8 +100,6 @@ class System:
             positions = self.xp.array(positions)
  
         polarizability = polarizability_to_matrix(particle_type.polarizability, positions.shape[0], 3, self.xp)
-        print(f"positions type: {type(positions)}, shape: {positions.shape}")
-        print(f"polarizability type: {type(polarizability)}, shape: {polarizability.shape}")
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
     def get_field_in_particles(self, method : str = 'Inverse') -> ArrayLike:
@@ -116,11 +114,10 @@ class System:
         
         positions = self.particles.positions
         external_field = self.field.get_external_field_in_positions(positions)
-        green_tensor = construct_green_tensor(positions, self.medium_wave_number_nm)
-        field_solution = solve_MSP_from_arrays(polarizability=self.particles.polarizabilities,
+        field_solution = solve_MSP(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
-                                   green_tensor=green_tensor,
+                                   positions=positions,
                                    method=method)
         return field_solution
     

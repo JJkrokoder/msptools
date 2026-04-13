@@ -136,11 +136,42 @@ class Test_MSP_inverse:
 
         assert np.allclose(iterative_field, inverse_field, rtol=1e-6), "Fields from iterative and inverse methods did not match."
 
+class Test_MSP_GMRES_wo_green:
+    
+    num_particles = 4
+    dimension = 3
+    polarizability = np.repeat((1.0 + 0.5j)*np.eye(dimension)[None,:,:], num_particles, axis=0)
+    external_field = np.random.rand(num_particles, dimension)
+    wave_number = 1.0
+    positions = np.random.rand(num_particles, dimension)
+    
+    def test_gmres_solution(self):
+        total_field = solve_MSP_wo_green_GMRES(self.polarizability, self.external_field, self.wave_number, self.positions)
+        green_tensor = construct_green_tensor(self.positions, self.wave_number)
+        reference_solution = solve_MSP_from_arrays(self.polarizability, self.external_field, self.wave_number, green_tensor, method='Inverse')
+        assert np.allclose(total_field, reference_solution, rtol=1e-6), "Total field from GMRES method did not match reference solution from inverse method."
+
 class Test_MSP_examples:
 
     dimension = 3
+    methods = ['Iterative', 'Inverse', 'GMRES']
+    
+    @pytest.mark.parametrize("method", methods)
+    def test_MSP_1_particle(self, method):
+        positions = np.array([[0, 0, 0]])
+        polarizability_scalar = 1.0 + 0.5j
+        polarizability = np.repeat(polarizability_scalar*np.eye(self.dimension)[None,:,:], 1, axis=0)
+        external_field = np.array([[1, 0, 0]])
+        wave_number = 1.0
+
+        total_field = solve_MSP(polarizability, external_field, wave_number, positions, method=method)
+        expected_field = external_field / (1 - wave_number**2 * polarizability_scalar * construct_green_tensor(positions, wave_number)[0,0])
+
+        assert np.allclose(total_field[0], expected_field), "Total field at the particle did not match expected value."
+    
     @pytest.mark.parametrize("x", [5.0, 10.0, 20.0])
-    def test_2_particles_at_z0(self, x):
+    @pytest.mark.parametrize("method", ['Iterative', 'Inverse', 'GMRES'])
+    def test_2_particles_at_z0(self, x, method):
 
         polarizability_scalar = 1.0 + 0.5j
         polarizability = np.repeat(polarizability_scalar*np.eye(self.dimension)[None,:,:], 2, axis=0)
@@ -152,10 +183,9 @@ class Test_MSP_examples:
 
         positions = np.array([[0, 0, 0],
                               [x, 0, 0]])
-        
-        green_tensor = construct_green_tensor(positions, wave_number)
 
-        total_field = solve_MSP_from_arrays(polarizability, external_field, wave_number, green_tensor)
+        total_field = solve_MSP(polarizability, external_field, wave_number, positions, method=method)
+        green_tensor = construct_green_tensor(positions, wave_number)
 
         expected_field_particle_1 = external_field[0] / (1 - wave_number**2 * polarizability_scalar * green_tensor[0,1, 0,0])
         expected_field_particle_2 = external_field[1] / (1 - wave_number**2 * polarizability_scalar * green_tensor[1,0, 0,0])

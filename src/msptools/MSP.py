@@ -4,6 +4,51 @@ from numpy.typing import ArrayLike
 import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear
+from msptools.GreenTensor_Electric import construct_green_tensor, scattering_term
+
+def solve_MSP(polarizability : ArrayLike,
+              external_field : ArrayLike,
+              wave_number : float,
+              positions : ArrayLike,
+              method : str = 'GMRES',
+              tolerance : float = 1e-6) -> ArrayLike:
+    """
+    Solve the Multiple Scattering Problem (MSP) for the electric field at specified positions.
+    
+    Parameters
+    ----------
+    polarizability :
+        Polarizability of the particles.
+    external_field :
+        External field on particles positions.
+    wave_number :
+        Wave number of the incident wave.
+    positions :
+        Positions of the particles.
+    method :
+        Method to solve the MSP, either 'GMRES', 'Iterative' or 'Inverse'. Default is 'GMRES'.
+    tolerance :
+        Convergence relative tolerance for the iterative method. Default is 1e-6.
+    
+    Returns
+    -------
+    xp.ndarray
+        The solution to the MSP.
+    """
+    
+    n_particles = external_field.shape[0]
+    
+    if n_particles == 1:
+        return external_field
+    else:
+        if method == 'GMRES':
+            return solve_MSP_wo_green(polarizability, external_field, wave_number, positions, method=method, tolerance=tolerance)
+        elif method in ('Iterative', 'Inverse'):
+            return solve_MSP_from_arrays(polarizability, external_field, wave_number, construct_green_tensor(positions, wave_number), method=method, tolerance=tolerance)
+        else:
+            raise ValueError("Unknown method: {}".format(method))
+
+
 
 def solve_MSP_wo_green(polarizability : ArrayLike,
               external_field : ArrayLike,
@@ -26,7 +71,9 @@ def solve_MSP_wo_green(polarizability : ArrayLike,
         Positions of the particles.
     method :
         Method to solve the MSP, either 'GMRES' or 'Iterative'.
-    
+    tolerance :
+        Convergence relative tolerance for the iterative method. Default is 1e-6.
+        
     Returns
     -------
     xp.ndarray
@@ -35,8 +82,6 @@ def solve_MSP_wo_green(polarizability : ArrayLike,
     
     if method == 'GMRES':
         return solve_MSP_wo_green_GMRES(polarizability, external_field, wave_number, positions, tolerance)
-    elif method == 'Iterative':
-        return solve_MSP_wo_green_iterative(polarizability, external_field, wave_number, positions, tolerance)
     else:
         raise ValueError("Unknown method: {}".format(method))
     
@@ -63,9 +108,8 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
         S = scattering_term(positions, wave_number, dipole_moments)
         return (E - S).flatten()
     A = LinearOperator(shape = (size, size), 
-                       matvec=matvec,
-                        dtype=external_field.dtype)
-    solution_flat, info = gmres(A, E_0_flat, tol=tolerance, maxiter=maxiter)
+                       matvec=matvec, dtype=complex)
+    solution_flat, info = gmres(A, E_0_flat, rtol=tolerance, maxiter=maxiter)
     if info != 0:
         print(f"Warning: GMRES did not converge within {maxiter} iterations. Info: {info}")
     return solution_flat.reshape(num_particles, dimensions)
