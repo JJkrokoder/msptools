@@ -4,7 +4,10 @@ from numpy.typing import ArrayLike
 import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear
-from msptools.GreenTensor_Electric import construct_green_tensor, scattering_term, scattering_term_batched
+from msptools.GreenTensor_Electric import (construct_green_tensor,
+                                           scattering_term,
+                                           scattering_term_batched,
+                                           scat_green_field_from_rel_vecs_dipoles)
 
 def solve_MSP(polarizability : ArrayLike,
               external_field : ArrayLike,
@@ -101,20 +104,26 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
         from cupyx.scipy.sparse.linalg import gmres, LinearOperator
     num_particles, dimensions = external_field.shape
     size = num_particles * dimensions
-    #rel_vecs = positions[:, None, :] - positions[None, :, :]
+    rel_vecs = positions[:, None, :] - positions[None, :, :]
     E_0_flat = external_field.flatten()
     
     def matvec(E_flat):
         E = E_flat.reshape(num_particles, dimensions)
         dipole_moments = calculate_dipole_moments_linear(polarizability, E)
-        S = scattering_term(positions, wave_number, dipole_moments)
+        S = scattering_term_batched(rel_vecs=rel_vecs,
+                                    wave_number=wave_number,
+                                    dipole_moments=dipole_moments)
         return (E - S).flatten()
       
     A = LinearOperator(shape = (size, size), 
                        matvec=matvec, dtype=complex)
     
-    
-    solution_flat, info = gmres(A = A, b = E_0_flat, x0 = E_0_flat, rtol=tolerance, maxiter=maxiter)
+    solution_flat, info = gmres(A = A, 
+                                b = E_0_flat, 
+                                x0 = E_0_flat, 
+                                rtol=tolerance, 
+                                maxiter=maxiter,
+                                restart=20)
     if info != 0:
         print(f"Warning: GMRES did not converge within {maxiter} iterations. Info: {info}")
     return solution_flat.reshape(num_particles, dimensions)

@@ -171,7 +171,44 @@ def construct_green_tensor(positions : np.ndarray, wave_number: float) -> np.nda
     rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
     green_tensor = construct_green_tensor_from_rel_vecs(rel_vec_matrix, wave_number)
     return green_tensor
+
+def scat_green_field_from_rel_vecs_dipoles(rel_vecs: ArrayLike, 
+                                         p: ArrayLike, 
+                                         k: float) -> ArrayLike:
+    """
+    Applies the Green's function to a set of dipole moments given the relative position vectors and wave number.
     
+    Parameters   
+    ----------
+    rel_vecs :
+        Relative position vectors between particles, of shape (num_particles, num_particles, dimension).
+    p :
+        Dipole moments of the particles, of shape (num_particles, dimension).
+    k :
+        Wave number.
+        
+    Returns
+    -------
+    ArrayLike
+        The resulting field after applying the Green's function, of shape (num_particles, dimension).
+    """
+    xp = get_backend(rel_vecs)
+
+    r = xp.linalg.norm(rel_vecs, axis=-1)
+
+    # scalars
+    G0 = G_0_function(r, k)
+    G1 = G_1_function(r, k)
+
+    # direct contraction WITHOUT forming tensor
+    rp = xp.sum(rel_vecs * p, axis=-1)          # (B, N)
+
+    term1 = G0[...,None] * p                   # isotropic part
+    term2 = G1[...,None] * rel_vecs * rp[...,None] 
+    
+    scattering_field = xp.sum(k**2*(term1 + term2), axis=1)  # sum over source particles
+
+    return scattering_field
 
 def construct_green_tensor_from_rel_vecs(rel_vecs : np.ndarray, wave_number: float) -> np.ndarray:
     """
@@ -296,14 +333,14 @@ def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) 
     return green_tensor_derivative
  
 
-def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments : ArrayLike) -> ArrayLike:
+def scattering_term(rel_vecs : ArrayLike, wave_number : float, dipole_moments : ArrayLike) -> ArrayLike:
     """
     Compute the scattering term for the MSP without explicitly constructing the Green's tensor.
 
     Parameters
     ----------
-    positions :
-        Positions of the particles.
+    rel_vecs :
+        Relative position vectors between particles.
     wave_number :
         Wave number of the incident wave.
     dipole_moments :
@@ -314,11 +351,9 @@ def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments :
     xp.ndarray
         The scattering term for the MSP.
     """
-    xp = get_backend(positions)
+    xp = get_backend(rel_vecs)
     k2 = wave_number**2
     
-    # Pairwise differences
-    rel_vecs = positions[:, None, :] - positions[None, :, :]
     num_particles, dimensions = rel_vecs.shape[0], rel_vecs.shape[-1]
     
     # mask self-interactions
@@ -336,13 +371,13 @@ def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments :
     return scattering_field
 
 def scattering_term_batched(
-    positions,
-    wave_number,
-    dipole_moments,
+    rel_vecs: ArrayLike,
+    wave_number: float,
+    dipole_moments: ArrayLike,
     batch_size: int = 128
 ):
-    xp = get_backend(positions)
-    N, d = positions.shape
+    xp = get_backend(rel_vecs)
+    N, d = rel_vecs.shape[0], rel_vecs.shape[-1]
     k2 = wave_number**2
 
     scattering_field = xp.zeros((N, d), dtype=xp.complex128)
@@ -351,10 +386,10 @@ def scattering_term_batched(
         i1 = min(i0 + batch_size, N)
 
         # (B, 1, d) - (1, N, d) → (B, N, d)
-        rel_vec = positions[i0:i1, None, :] - positions[None, :, :]
+        rel_vec_block = rel_vecs[i0:i1,:,:]
 
         # Compute Green tensor: (B, N, d, d)
-        G = construct_green_tensor_from_rel_vecs(rel_vec, wave_number)
+        G = construct_green_tensor_from_rel_vecs(rel_vec_block, wave_number)
 
         # Mask self-interaction ONLY if batch overlaps diagonal
         if i0 <= i1:

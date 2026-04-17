@@ -12,7 +12,8 @@ from msptools.GreenTensor_Electric import (G_0_function,
                                            pair_green_tensor_derivative, 
                                            construct_green_tensor_gradient,
                                            pairwise_green_tensor,
-                                            scattering_term)
+                                            scattering_term,
+                                            scat_green_field_from_rel_vecs_dipoles)
 
 class Test_ConstructGreenTensor:
 
@@ -108,6 +109,20 @@ class Test_PairWiseGreenTensor:
         pairwise_g = pairwise_green_tensor(rel_vecs_0, self.wave_number)
         expected_shape = (rel_vecs_0.shape[0], positions.shape[1], positions.shape[1])
         assert pairwise_g.shape == expected_shape, "Pairwise Green's tensor shape mismatch for multiple relative vectors."
+
+class Test_ApplyGreenTensor:
+    
+    wave_number = 2.0
+    
+    def test_consistency_with_full_green_tensor(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        dipoles = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering = scat_green_field_from_rel_vecs_dipoles(rel_vecs, dipoles, self.wave_number)
+        expected_scattering = scattering_term(rel_vecs, self.wave_number, dipoles)
+
+        assert scattering.shape == expected_scattering.shape, "Output shape mismatch between scat_green_field_from_rel_vecs_dipoles and scattering_term."
+        assert np.allclose(scattering, expected_scattering), "Applying Green's tensor to dipoles does not match the expected scattering field computed from the full Green's tensor."
         
         
 class Test_PairGreenTensor:
@@ -255,7 +270,8 @@ class Test_ScatteringTerm:
     def test_consistency_with_green_tensor(self):
         positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
         dipole_moments = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-        scattering_field = scattering_term(positions, self.wave_number, dipole_moments)
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
         expected_scattering_field = np.zeros_like(scattering_field)
         for j in range(positions.shape[0]):
             for i in range(positions.shape[0]):
@@ -266,6 +282,7 @@ class Test_ScatteringTerm:
     def test_1_particle_zero_scattering(self):
         positions = np.array([[0, 0, 0]])
         dipole_moments = np.array([[1, 0, 0]])
-        scattering_field = scattering_term(positions, self.wave_number, dipole_moments)
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
         expected_scattering_field = np.zeros_like(scattering_field)
         assert np.allclose(scattering_field, expected_scattering_field), "Scattering term for a single particle should be zero."
