@@ -28,11 +28,14 @@ def G_0_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLik
             return 0.0j
     else:
         xp = get_backend(r)
-        mask = r > 0
-        result = xp.zeros_like(r, dtype=complex)
-        kr = wave_number * r[mask]
-        result[mask] = xp.exp(1j * kr) / (4 * pi * r[mask]) * (1 + 1j/kr - 1/kr**2)
-        return result
+        
+        kr = wave_number * r 
+        inv_kr = xp.where(kr > 0, 1/kr, 0.0)
+        inv_r = inv_kr * wave_number
+        inv_kr2 = inv_kr * inv_kr
+        exp_ikr = xp.exp(1j * kr)
+        
+        return exp_ikr * (inv_r / (4 * pi)) * (1 + 1j*inv_kr - inv_kr2)
 
 def G_1_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLike:
     """
@@ -58,10 +61,15 @@ def G_1_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLik
             return 0.0j
     else:
         xp = get_backend(r)
-        mask = r > 0
-        result = xp.zeros_like(r, dtype=complex)
-        kr = wave_number * r[mask]
-        result[mask] = -xp.exp(1j * kr) / (4 * xp.pi * r[mask]**3) * (1 + 3j/kr - 3/kr**2)
+        
+        kr = wave_number * r 
+        inv_kr = xp.where(kr > 0, 1/kr, 0.0)
+        inv_r = inv_kr * wave_number
+        inv_r3 = inv_r * inv_r * inv_r
+        inv_kr2 = inv_kr * inv_kr
+        exp_ikr = xp.exp(1j * kr)
+        
+        result = -exp_ikr * (inv_r3 / (4 * pi)) * (1 + 3j*inv_kr - 3*inv_kr2)
         return result
 
 def G_0_derivative_function(r: float | ArrayLike, wave_number: float) -> complex:
@@ -307,19 +315,19 @@ def scattering_term(positions : ArrayLike, wave_number : float, dipole_moments :
         The scattering term for the MSP.
     """
     xp = get_backend(positions)
-    num_particles, dimensions = positions.shape
     k2 = wave_number**2
     
     # Pairwise differences
-    rel_vec_matrix = positions[:, None, :] - positions[None, :, :]
+    rel_vecs = positions[:, None, :] - positions[None, :, :]
+    num_particles, dimensions = rel_vecs.shape[0], rel_vecs.shape[-1]
     
     # mask self-interactions
     mask = ~xp.eye(num_particles, dtype=bool)
     
-    scattering_field = xp.zeros_like(positions, dtype=xp.complex128)
+    scattering_field = xp.zeros((num_particles, dimensions), dtype=xp.complex128)
     
     for j in range(num_particles):
-        rel_vecs_j = rel_vec_matrix[j][mask[j]]
+        rel_vecs_j = rel_vecs[j][mask[j]]
         dipoles_l = dipole_moments[mask[j]]
         
         G_blocks = pairwise_green_tensor(rel_vecs_j, wave_number)
