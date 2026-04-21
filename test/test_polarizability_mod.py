@@ -6,7 +6,7 @@ from msptools.polarizability_mod import (Core_Shell_Clausius_Mossotti,
                                             Clausius_Mossotti,
                                             Mie_size_dipole_approximation,
                                             Mie_electric_dipole_polarizability,
-                                            hankel_plus,
+                                            Aden_Kerker_core_shell_polarizability,
                                             compute_sphere_polarizability_DA)
 from msptools.tools.unit_calcs import nm_to_eV, frequency_to_wavenumber_nm
 from msptools.permittivity import permittivity_ridx
@@ -42,6 +42,61 @@ class Test_Core_Shell:
         
         assert np.isclose(alpha, expected_alpha), f"Expected {expected_alpha}, got {alpha}"
     
+    def test_Core_Shell_Clausius_Mossotti_no_core(self):
+        radius_core = 1e-10  # um, tiny core
+        radius_shell = 0.08  # um
+        medium_permittivity = 1
+        
+        particle_permittivity_core = self.e1  
+        particle_permittivity_shell = self.e2  
+
+        alpha = Core_Shell_Clausius_Mossotti(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell)
+        expected_alpha = Clausius_Mossotti(radius_shell, medium_permittivity, particle_permittivity_shell)
+        
+        assert np.isclose(alpha, expected_alpha), f"Expected {expected_alpha}, got {alpha}"
+    
+    def test_Aden_Kerker_small_particle_consistency(self):
+        radius_core = 0.08  # um
+        radius_shell = 0.16
+        wave_number = 2 * np.pi / 1000
+        medium_permittivity = 1
+        
+        particle_permittivity_core = self.e1  
+        particle_permittivity_shell = self.e2  
+
+        alpha_ak = Aden_Kerker_core_shell_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number) 
+        alpha_cm = Core_Shell_Clausius_Mossotti(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell)
+        
+        assert np.isclose(alpha_ak, alpha_cm, rtol=1e-6), f"Expected {alpha_cm}, got {alpha_ak}"
+    
+    def test_Aden_Kerker_pure_core_consistency(self):
+        radius_core = 0.08  # um
+        radius_shell = 0.08 # um, no shell
+        wave_number = 2 * np.pi / 0.5
+        medium_permittivity = 1
+        
+        particle_permittivity_core = self.e1  
+        particle_permittivity_shell = self.e2  
+
+        alpha_ak = Aden_Kerker_core_shell_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number) 
+        expected_alpha = Mie_electric_dipole_polarizability(radius_core, medium_permittivity, particle_permittivity_core, wave_number)
+        
+        assert np.isclose(alpha_ak, expected_alpha, rtol=1e-6), f"Expected {expected_alpha}, got {alpha_ak}"
+    
+    def test_Aden_Kerker_pure_shell_consistency(self):
+        radius_core = 1e-10  # um, no core
+        radius_shell = 0.08 # um, no core
+        wave_number = 2 * np.pi / 0.5
+        medium_permittivity = 1
+        
+        particle_permittivity_core = self.e1  
+        particle_permittivity_shell = self.e2  
+
+        alpha_ak = Aden_Kerker_core_shell_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number) 
+        expected_alpha = Mie_electric_dipole_polarizability(radius_shell, medium_permittivity, particle_permittivity_shell, wave_number)
+        
+        assert np.isclose(alpha_ak, expected_alpha, rtol=1e-6), f"Expected {expected_alpha}, got {alpha_ak}"   
+    
 
 def test_negative_real_polarizability_at_532nm_Au():
     radius = 60  # um
@@ -66,17 +121,6 @@ def test_Zhou_data_with_Mie_dipole_approximation():
     
     assert np.allclose(alpha_nm.real*(1e-9)**3, alpha_real_zhou, atol=1e-5), "Mie dipole approximation does not match Zhou data within tolerance."
 
-def test_hankel_plus():
-    x = np.linspace(0.1, 10, 5)
-    n = [0, 1, 2, 3, 4]
-
-    for order in n:
-        hnk = hankel_plus(order, x)
-        expected_hnk = sph_jn(order, x) * 1j - sph_yn(order, x)
-        dhnk = hankel_plus(order, x, derivative=True)
-        expected_dhnk = (sph_jn(order, x, derivative=True) * 1j) - sph_yn(order, x, derivative=True)
-        assert np.allclose(hnk, expected_hnk), f"Hankel function of order {order} does not match expected values."
-        assert np.allclose(dhnk, expected_dhnk), f"Derivative of Hankel function of order {order} does not match expected values."
 
 def test_Mie_dipole_for_small_radius():
     radius = 10  # nm, very small particle

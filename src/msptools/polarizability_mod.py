@@ -1,18 +1,14 @@
 from .backend import get_backend
 from typing import Callable
-from scipy.special import spherical_jn as sph_jn
-from scipy.special import spherical_yn as sph_yn
 from scipy.constants import pi
 from numpy.typing import ArrayLike
 from .permittivity import permittivity_ridx
+from .tools.unit_calcs import nm_to_eV
+from .tools.mie_theory import tE_n_coefficient, hankel_plus, tEn_aden_kerker_coefficient
 from scipy.constants import c, e, h
 
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
     """Select the polarizability computation method based on the material and excitation wavelength."""  
-
-def hankel_plus(n: int, x: float, derivative: bool = False) -> complex:
-    """Compute the spherical Hankel function of the first kind."""
-    return sph_jn(n, x, derivative) * 1j - sph_yn(n, x, derivative)
 
 def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float) -> float:
     """
@@ -70,8 +66,8 @@ def Core_Shell_Clausius_Mossotti(radius_core: float | ArrayLike,
     """
     
     
-    b3 = radius_core**3
-    a3 = radius_shell**3
+    a3 = radius_core**3
+    b3 = radius_shell**3
     e1 = particle_permittivity_core
     e2 = particle_permittivity_shell
     e_m = medium_permittivity  
@@ -161,19 +157,9 @@ def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float
     - Wave number and radius should be in consistent units.
     """
     k_m = wave_number * medium_permittivity**0.5
-    k_p = wave_number * particle_permittivity**0.5
-    x_p = k_p * radius
-    x_m = k_m * radius
-    eps_m = medium_permittivity
-    eps_p = particle_permittivity
+    x = wave_number * radius
 
-    t11 = eps_p * sph_jn(1,x_p) * (sph_jn(1,x_m) + x_m * sph_jn(1,x_m,derivative=True))
-    t12 = eps_m * sph_jn(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
-    t21 = eps_m * hankel_plus(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
-    t22 = eps_p * sph_jn(1,x_p) * (hankel_plus(1,x_m) + x_m * hankel_plus(1,x_m,derivative=True))
-
-    tE1 = (t11 - t12) / (t21 - t22)
-
+    tE1 = tE_n_coefficient(n=1, x=x, eps_p=particle_permittivity, eps_m=medium_permittivity)
     alpha_e = 6 * pi / (k_m**3) * tE1
     return alpha_e
 
@@ -208,50 +194,12 @@ def Aden_Kerker_core_shell_polarizability(radius_core: float | ArrayLike,
     """
     
     k_m = wave_number * medium_permittivity ** 0.5
-    k_2 = wave_number * particle_permittivity_shell ** 0.5
-    k_1 = wave_number * particle_permittivity_core ** 0.5
+
+    x2 = k_m * radius_shell
+    x1 = k_m * radius_core
+
+    tE1 = tEn_aden_kerker_coefficient(n=1, x_core=x1, x_shell=x2, eps_core=particle_permittivity_core, eps_shell=particle_permittivity_shell, eps_m=medium_permittivity)
     
-    eps1 = particle_permittivity_core
-    eps2 = particle_permittivity_shell
-    epsm = medium_permittivity
-
-    xm = k_m * radius_shell
-    x2 = k_2 * radius_shell
-    x1 = k_2 * radius_core
-    xc = k_1 * radius_core
-
-    # --- Core-shell coupling term A1 ---
-    num_A = (
-        eps2 * sph_jn(1, xc) * (sph_jn(1, x1) + x1 * sph_jn(1, x1, True))
-        - eps1 * sph_jn(1, x1) * (sph_jn(1, xc) + xc * sph_jn(1, xc, True))
-    )
-
-    den_A = (
-        eps2 * sph_jn(1, xc) * (sph_yn(1, x1) + x1 * sph_yn(1, x1, True))
-        - eps1 * sph_yn(1, x1) * (sph_jn(1, xc) + xc * sph_jn(1, xc, True))
-    )
-
-    A1 = num_A / den_A
-
-    # --- Build outer response ---
-    j2 = sph_jn(1, x2)
-    j2_p = sph_jn(1, x2) + x2 * sph_jn(1, x2, True)
-
-    y2 = sph_yn(1, x2)
-    y2_p = sph_yn(1, x2) + x2 * sph_yn(1, x2, True)
-
-    jm = sph_jn(1, xm)
-    jm_p = sph_jn(1, xm) + xm * sph_jn(1, xm, True)
-
-    hm = hankel_plus(1, xm)
-    hm_p = hankel_plus(1, xm) + xm * hankel_plus(1, xm, True)
-
-    core_shell_term = j2_p - A1 * y2_p
-
-    num = eps2 * j2 * jm_p - epsm * jm * core_shell_term
-    den = eps2 * j2 * hm_p - epsm * hm * core_shell_term
-
-    tE1 = num / den
     return 6 * pi / (k_m**3) * tE1
 
 def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, num_particles: int, dimensions: int, xp) -> ArrayLike:
@@ -311,12 +259,15 @@ def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
         The polarizability of the spherical particle using the Mie electric dipole formula.
     """
     wave_number = 2 * pi / wavelength_nm
-    frequency_eV =  h * c / (wavelength_nm * 1e-9) / e
+    frequency_eV =  nm_to_eV(wavelength_nm)
     particle_permittivity = permittivity_ridx(frequency_eV, particle_material)
     if method == 'Mie':
         polarizability = Mie_electric_dipole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
     elif method == 'Mie_SA':
         polarizability = Mie_size_dipole_approximation(radius_nm, medium_permittivity, particle_permittivity, wave_number)
+    elif method == 'Clausius-Mossotti':
+        polarizability = Clausius_Mossotti(radius_nm, medium_permittivity, particle_permittivity)
+    
     return polarizability
 
 def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
@@ -353,7 +304,7 @@ def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
     """
     
     wave_number = 2 * pi / wavelength_nm
-    frequency_eV =  h * c / (wavelength_nm * 1e-9) / e
+    frequency_eV =  nm_to_eV(wavelength_nm)
     particle_permittivity_core = permittivity_ridx(frequency_eV, material_core)
     particle_permittivity_shell = permittivity_ridx(frequency_eV, material_shell)
     if method == 'Aden-Kerker':
