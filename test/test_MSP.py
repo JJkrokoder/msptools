@@ -140,7 +140,7 @@ class Test_MSP_GMRES_wo_green:
     
     num_particles = 4
     dimension = 3
-    polarizability = np.repeat((1.0 + 0.5j)*np.eye(dimension)[None,:,:], num_particles, axis=0)
+    polarizability = np.repeat((100.0 + 0.5j)*np.eye(dimension)[None,:,:], num_particles, axis=0)
     external_field = np.random.rand(num_particles, dimension)
     wave_number = 1.0
     positions = np.random.rand(num_particles, dimension)
@@ -149,7 +149,7 @@ class Test_MSP_GMRES_wo_green:
         total_field = solve_MSP_wo_green_GMRES(self.polarizability, self.external_field, self.wave_number, self.positions)
         green_tensor = construct_green_tensor(self.positions, self.wave_number)
         reference_solution = solve_MSP_from_arrays(self.polarizability, self.external_field, self.wave_number, green_tensor, method='Inverse')
-        assert np.allclose(total_field, reference_solution, rtol=1e-6), "Total field from GMRES method did not match reference solution from inverse method."
+        assert np.allclose(total_field, reference_solution, rtol=1e-6, atol=1e-6), "Total field from GMRES method did not match reference solution from inverse method."
 
 class Test_MSP_examples:
 

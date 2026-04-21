@@ -5,6 +5,8 @@ import numpy as np
 
 from msptools.dipole_moments import calculate_dipole_moments_linear
 from msptools.GreenTensor_Electric import (construct_green_tensor,
+                                           G_0_function,
+                                           G_1_function,
                                            scattering_term,
                                            scattering_term_batched,
                                            scat_green_field_from_rel_vecs_dipoles)
@@ -105,6 +107,9 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
     num_particles, dimensions = external_field.shape
     size = num_particles * dimensions
     rel_vecs = positions[:, None, :] - positions[None, :, :]
+    distances = xp.linalg.norm(rel_vecs, axis=-1)
+    G_0 = G_0_function(distances, wave_number)
+    G_1 = G_1_function(distances, wave_number)
     E_0_flat = external_field.flatten()
     
     def matvec(E_flat):
@@ -112,7 +117,9 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
         dipole_moments = calculate_dipole_moments_linear(polarizability, E)
         S = scattering_term_batched(rel_vecs=rel_vecs,
                                     wave_number=wave_number,
-                                    dipole_moments=dipole_moments)
+                                    dipole_moments=dipole_moments,
+                                    G_0=G_0,
+                                    G_1=G_1)
         return (E - S).flatten()
       
     A = LinearOperator(shape = (size, size), 

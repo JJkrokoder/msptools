@@ -201,14 +201,46 @@ def scat_green_field_from_rel_vecs_dipoles(rel_vecs: ArrayLike,
     G1 = G_1_function(r, k)
 
     # direct contraction WITHOUT forming tensor
-    rp = xp.sum(rel_vecs * p, axis=-1)          # (B, N)
+    scattering_field = scattering_contraction(rel_vecs, p, G0, G1, k) 
 
-    term1 = G0[...,None] * p                   # isotropic part
-    term2 = G1[...,None] * rel_vecs * rp[...,None] 
+    return scattering_field
+
+def scattering_contraction(rel_vecs: ArrayLike, 
+                          p: ArrayLike,
+                          G_0: ArrayLike,
+                          G_1: ArrayLike,
+                          k: float) -> ArrayLike:
+    """
+    Computes the scattering field by contracting the Green's function with the dipole moments.
     
+    Parameters
+    ----------
+    
+    rel_vecs :
+        Relative position vectors between particles, of shape (num_particles, num_particles, dimension).
+    p :
+        Dipole moments of the particles, of shape (num_particles, dimension).
+    G_0 :
+        Precomputed G_0 values for the relative positions, of shape (num_particles, num_particles).
+    G_1 :
+        Precomputed G_1 values for the relative positions, of shape (num_particles, num_particles).
+    k :
+        Wave number.
+    
+    Returns
+    -------
+    ArrayLike
+        The resulting field after applying the Green's function, of shape (num_particles, dimension).
+    """
+    
+    xp = get_backend(rel_vecs)
+    rp = xp.einsum('ijd,jd->ij', rel_vecs, p)          # (N, N)
+    term1 = G_0[...,None] * p                   # isotropic part
+    term2 = G_1[...,None] * rel_vecs * rp[...,None]
     scattering_field = xp.sum(k**2*(term1 + term2), axis=1)  # sum over source particles
 
     return scattering_field
+
 
 def construct_green_tensor_from_rel_vecs(rel_vecs : np.ndarray, wave_number: float) -> np.ndarray:
     """
@@ -374,7 +406,9 @@ def scattering_term_batched(
     rel_vecs: ArrayLike,
     wave_number: float,
     dipole_moments: ArrayLike,
-    batch_size: int = 128
+    G_0: ArrayLike,
+    G_1: ArrayLike,
+    batch_size: int = 512
 ):
     xp = get_backend(rel_vecs)
     N, d = rel_vecs.shape[0], rel_vecs.shape[-1]
@@ -387,22 +421,11 @@ def scattering_term_batched(
 
         # (B, 1, d) - (1, N, d) → (B, N, d)
         rel_vec_block = rel_vecs[i0:i1,:,:]
-
-        # Compute Green tensor: (B, N, d, d)
-        G = construct_green_tensor_from_rel_vecs(rel_vec_block, wave_number)
-
-        # Mask self-interaction ONLY if batch overlaps diagonal
-        if i0 <= i1:
-            idx = xp.arange(i0, i1)
-            G[xp.arange(i1 - i0), idx, :, :] = 0
+        G_0_block = G_0[i0:i1,:]
+        G_1_block = G_1[i0:i1,:]
 
         # Contract: (B,N,d,d) × (N,d) → (B,d)
-        scattering_field[i0:i1] = k2 * xp.einsum(
-            'ijmn,jn->im',
-            G,
-            dipole_moments
-        )
-
+        scattering_field[i0:i1] = scattering_contraction(rel_vec_block, dipole_moments, G_0_block, G_1_block, wave_number)
     return scattering_field
 
         

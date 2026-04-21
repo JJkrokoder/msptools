@@ -13,7 +13,7 @@ from msptools.GreenTensor_Electric import (G_0_function,
                                            construct_green_tensor_gradient,
                                            pairwise_green_tensor,
                                             scattering_term,
-                                            scat_green_field_from_rel_vecs_dipoles)
+                                            scat_green_field_from_rel_vecs_dipoles, scattering_term_batched)
 
 class Test_ConstructGreenTensor:
 
@@ -286,3 +286,19 @@ class Test_ScatteringTerm:
         scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
         expected_scattering_field = np.zeros_like(scattering_field)
         assert np.allclose(scattering_field, expected_scattering_field), "Scattering term for a single particle should be zero."
+              
+        
+def test_scattering_matvec():
+    N = 5
+    d = 3
+    p = np.random.rand(N, d)
+    positions = np.random.rand(N, d)
+    wave_number = 2.0
+    rel_vecs = positions[:, None, :] - positions[None, :, :]
+    G_0 = G_0_function(np.linalg.norm(rel_vecs, axis=-1), wave_number)
+    G_1 = G_1_function(np.linalg.norm(rel_vecs, axis=-1), wave_number)
+
+    S1 = scattering_term_batched(rel_vecs, wave_number, p, G_0, G_1)
+    S2 = scat_green_field_from_rel_vecs_dipoles(rel_vecs, p, wave_number)
+
+    assert np.allclose(S1, S2, atol=1e-8)
