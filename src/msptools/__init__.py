@@ -6,6 +6,7 @@ from .polarizability_mod import *
 from .particle_types import *
 from .particles_mod import *
 from .permittivity import *
+from .cross_sections import *
 from .field_mod import *
 from .tools.unit_calcs import *
 from .GreenTensor_Electric import *

@@ -123,18 +123,21 @@ def test_Zhou_data_with_Mie_dipole_approximation():
 
 
 def test_Mie_dipole_for_small_radius():
-    radius = 10  # nm, very small particle
+    radius = 0.5  # nm, very small particle
     medium_permittivity = 1.33**2
-    wavelength_nm = 2000  # nm
+    wavelength_nm = 4000  # nm
     frequency_eV = nm_to_eV(wavelength_nm)
     particle_permittivity = permittivity_ridx(frequency_eV, 'Au')
     size_parameter = frequency_to_wavenumber_nm(frequency_eV) * radius
 
     alpha_mie_approx = Mie_size_dipole_approximation(radius, medium_permittivity, particle_permittivity, frequency_to_wavenumber_nm(frequency_eV))
     alpha_mie = Mie_electric_dipole_polarizability(radius, medium_permittivity, particle_permittivity, frequency_to_wavenumber_nm(frequency_eV))
+    alpha_cm = Clausius_Mossotti(radius, medium_permittivity, particle_permittivity)
 
-    assert np.isclose(alpha_mie_approx.real, alpha_mie.real, rtol=5e-4, atol=size_parameter**4), f"Mie dipole approx real part {alpha_mie_approx.real:.2f} not close to Mie electric dipole {alpha_mie.real:.2f}. rerror: {abs(alpha_mie_approx.real - alpha_mie.real)/abs(alpha_mie.real):.2e}, aerror: {abs(alpha_mie_approx.real - alpha_mie.real):.2e}, size_param^4: {size_parameter**4:.2e}"
-    assert np.isclose(alpha_mie_approx.imag, alpha_mie.imag, rtol=5e-4, atol=size_parameter**4), f"Mie dipole approx imag part {alpha_mie_approx.imag:.2f} not close to Mie electric dipole {alpha_mie.imag:.2f}. rerror: {abs(alpha_mie_approx.imag - alpha_mie.imag)/abs(alpha_mie.imag):.2e}, aerror: {abs(alpha_mie_approx.imag - alpha_mie.imag):.2e}, size_param^4: {size_parameter**4:.2e}"
+    assert np.isclose(alpha_mie_approx.real, alpha_mie.real), f"Mie dipole approx real part {alpha_mie_approx.real:.2f} not close to Mie electric dipole {alpha_mie.real:.2f}. rerror: {abs(alpha_mie_approx.real - alpha_mie.real)/abs(alpha_mie.real):.2e}, aerror: {abs(alpha_mie_approx.real - alpha_mie.real):.2e}, size_param^4: {size_parameter**4:.2e}"
+    assert np.isclose(alpha_mie_approx.imag, alpha_mie.imag), f"Mie dipole approx imag part {alpha_mie_approx.imag:.2f} not close to Mie electric dipole {alpha_mie.imag:.2f}. rerror: {abs(alpha_mie_approx.imag - alpha_mie.imag)/abs(alpha_mie.imag):.2e}, aerror: {abs(alpha_mie_approx.imag - alpha_mie.imag):.2e}, size_param^4: {size_parameter**4:.2e}"
+    assert np.isclose(alpha_mie.real, alpha_cm.real), f"Mie electric dipole real part {alpha_mie.real:.2f} not close to Clausius-Mossotti real part {alpha_cm.real:.2f}. rerror: {abs(alpha_mie.real - alpha_cm.real)/abs(alpha_cm.real):.2e}, aerror: {abs(alpha_mie.real - alpha_cm.real):.2e}"
+    assert np.isclose(alpha_mie.imag, alpha_cm.imag), f"Mie electric dipole imag part {alpha_mie.imag:.2f} not close to Clausius-Mossotti imag part {alpha_cm.imag:.2f}. rerror: {abs(alpha_mie.imag - alpha_cm.imag)/abs(alpha_cm.imag):.2e}, aerror: {abs(alpha_mie.imag - alpha_cm.imag):.2e}"
 
 def test_one_polarizability_to_matrix():
     polarizability = 1.0 + 0.5j
@@ -162,7 +165,7 @@ class Test_spher_pol_function:
         assert polarizabilities.shape == (len(wavelengths_nm),), f"Expected shape ({len(wavelengths_nm)},), got {polarizabilities.shape}"
         
     def test_sphere_polarizability_DA_consistency_with_Mie_dipole(self):
-        radius_nm = 20
+        radius_nm = 5
         wavelengths_nm = np.array([400.9234828496042, 412.0052770448549, 422.16358839050133, 431.39841688654354, 439.70976253298153, 448.94459102902374, 457.2559366754617, 465.5672823218997, 472.9551451187335, 479.41952506596306])  # nm
 
         polarizabilities_DA = compute_sphere_polarizability_DA(radius_nm, self.medium_permittivity, self.particle_material, wavelengths_nm)
@@ -172,8 +175,8 @@ class Test_spher_pol_function:
             particle_permittivity = permittivity_ridx(frequency_eV, self.particle_material)
             expected_alpha = Mie_electric_dipole_polarizability(radius_nm, self.medium_permittivity, particle_permittivity, frequency_to_wavenumber_nm(frequency_eV))
             approximated_alpha = Mie_size_dipole_approximation(radius_nm, self.medium_permittivity, particle_permittivity, frequency_to_wavenumber_nm(frequency_eV))
-            assert np.isclose(polarizabilities_DA[i], expected_alpha, rtol=1e-3, atol=1e-5), f"At wavelength {wavelengths_nm[i]} nm: Expected {expected_alpha}, got {polarizabilities_DA[i]}"
-            assert np.isclose(polarizabilities_DA[i], approximated_alpha, rtol=5e-2, atol=100), f"At wavelength {wavelengths_nm[i]} nm: Expected approximated {approximated_alpha}, got {polarizabilities_DA[i]}"
+            assert np.isclose(polarizabilities_DA[i], expected_alpha, rtol=1e-4, atol=1e-5), f"At wavelength {wavelengths_nm[i]} nm: Expected {expected_alpha}, got {polarizabilities_DA[i]}"
+            assert np.isclose(polarizabilities_DA[i], approximated_alpha, rtol=1e-4, atol=100), f"At wavelength {wavelengths_nm[i]} nm: Expected approximated {approximated_alpha}, got {polarizabilities_DA[i]}"
     
     def test_plasmon_resonance_peak(self):
         radius_nm = 50

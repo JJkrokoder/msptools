@@ -157,9 +157,10 @@ def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float
     - Wave number and radius should be in consistent units.
     """
     k_m = wave_number * medium_permittivity**0.5
-    x = wave_number * radius
+    x = k_m * radius
+    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
 
-    tE1 = tE_n_coefficient(n=1, x=x, eps_p=particle_permittivity, eps_m=medium_permittivity)
+    tE1 = tE_n_coefficient(n=1, x_m=x, m=m)
     alpha_e = 6 * pi / (k_m**3) * tE1
     return alpha_e
 
@@ -197,8 +198,11 @@ def Aden_Kerker_core_shell_polarizability(radius_core: float | ArrayLike,
 
     x2 = k_m * radius_shell
     x1 = k_m * radius_core
+    
+    m1 = (particle_permittivity_core**0.5) / (medium_permittivity**0.5)
+    m2 = (particle_permittivity_shell**0.5) / (medium_permittivity**0.5)
 
-    tE1 = tEn_aden_kerker_coefficient(n=1, x_core=x1, x_shell=x2, eps_core=particle_permittivity_core, eps_shell=particle_permittivity_shell, eps_m=medium_permittivity)
+    tE1 = tEn_aden_kerker_coefficient(n=1, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
     
     return 6 * pi / (k_m**3) * tE1
 
@@ -252,6 +256,9 @@ def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
         The material of the particle.
     wavelength_nm :
         The wavelength of the incident light in nanometers.
+    method :
+        The method to compute the polarizability. 
+        Options are 'Mie' for the full Mie solution, 'Mie_SA' for the size expansion approximation, or 'Clausius-Mossotti' for the quasistatic approximation.
     
     Returns
     -------
