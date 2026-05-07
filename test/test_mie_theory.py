@@ -182,6 +182,13 @@ class Test_Aden_Kerker_Coefficient:
             coeff_Mie_pure_core = tE_n_coefficient(n, self.x_s_m, self.m_c)
             
             assert np.isclose(coeff_aden_kerker, coeff_Mie_pure_core, rtol=1e-6), f"AK {coeff_aden_kerker:.4f} does not match Mie for core equals shell permittivity {coeff_Mie_pure_core:.4f}, n={n}"
+    
+    def test_tE_n_consistency_shell_equals_medium_permittivity(self):
+        for n in self.n_values:
+            coeff_aden_kerker = tEn_aden_kerker_coefficient(n, self.x_c_m, self.x_s_m, self.m_c, 1.0)
+            coeff_Mie_pure_core = tE_n_coefficient(n, self.x_c_m, self.m_c)
+            
+            assert np.isclose(coeff_aden_kerker, coeff_Mie_pure_core, rtol=1e-6), f"AK {coeff_aden_kerker:.4f} does not match Mie for shell equals medium permittivity {coeff_Mie_pure_core:.4f}, n={n}"
 
     def test_tM_n_coefficient_consistency_pure_core(self):
         
@@ -198,6 +205,14 @@ class Test_Aden_Kerker_Coefficient:
             coeff_Mie_pure_shell = tM_n_coefficient(n, self.x_s_m, self.m_s)
             
             assert np.isclose(coeff_aden_kerker, coeff_Mie_pure_shell, rtol=1e-6), f"AK {coeff_aden_kerker:.4f} does not match Mie for pure shell {coeff_Mie_pure_shell:.4f}, n={n}"
+    
+    def test_tM_n_coefficient_consistency_core_equals_shell_permittivity(self):
+        for n in self.n_values:
+            coeff_aden_kerker = tMn_aden_kerker_coefficient(n, self.x_c_m, self.x_s_m, self.m_c, self.m_c)
+            coeff_Mie_pure_core = tM_n_coefficient(n, self.x_s_m, self.m_c)
+            
+            assert np.isclose(coeff_aden_kerker, coeff_Mie_pure_core, rtol=1e-6), f"AK {coeff_aden_kerker:.4f} does not match Mie for core equals shell permittivity {coeff_Mie_pure_core:.4f}, n={n}"
+
 
 
 class Test_order_Selection:
