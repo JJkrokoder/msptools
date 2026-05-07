@@ -320,12 +320,65 @@ def select_multipole_orders_sphere(size_parameter: ArrayLike, m: ArrayLike) -> t
         tE_next = tE_n_coefficient(N_electric + 1, size_parameter, m)
         tM_next = tM_n_coefficient(N_magnetic + 1, size_parameter, m)
         
-        if (2 * N_electric + 3) * xp.max(tE_next.imag) / ((2 * N_electric + 1) * xp.max(tE1.imag)) > 1e-3:
+        if (2 * N_electric + 3) * xp.max(tE_next.imag) / (3 * xp.max(tE1.imag)) > 1e-3:
             N_electric += 1
         else:
             last_tE = True
         
-        if (2 * N_magnetic + 3) * xp.max(tM_next.imag) / ((2 * N_magnetic + 1) * xp.max(tE1.imag)) > 1e-3:
+        if (2 * N_magnetic + 3) * xp.max(tM_next.imag) / (3 * xp.max(tE1.imag)) > 1e-3:
+            N_magnetic += 1
+        else:
+            last_tM = True
+    
+    return N_electric, N_magnetic
+
+def select_multipole_orders_core_shell_sphere(size_parameter_core: ArrayLike, size_parameter_shell: ArrayLike, m_1: ArrayLike, m_2: ArrayLike, tol: float = 1e-3) -> tuple[int, int]:
+    """
+    Select the maximum multipole orders to include in the Mie coefficient calculations for a core-shell sphere based on the size parameters and refractive index ratios.
+
+    Parameters
+    ----------
+    size_parameter_core : ArrayLike
+        Size parameter of the core, k_m * a.
+    size_parameter_shell : ArrayLike
+        Size parameter of the outer shell radius, k_m * b.
+    m_1 : ArrayLike
+        Relative refractive index of the core to the medium (m_1 = n_core / n_medium).
+    m_2 : ArrayLike
+        Relative refractive index of the shell to the medium (m_2 = n_shell / n_medium).
+    tol : float, optional
+        Tolerance for the convergence criterion.
+
+    Returns
+    -------
+    tuple
+        A tuple containing two arrays: the first with the multipole orders for electric coefficients and the second for magnetic coefficients.
+    
+    """
+    
+    if np.isscalar(size_parameter_core):
+        xp = np
+    else:
+        xp = get_backend(size_parameter_core)
+    
+    tE1 = tEn_aden_kerker_coefficient(1, size_parameter_core, size_parameter_shell, m_1, m_2)
+    
+    N_electric = 1
+    N_magnetic = 0
+    
+    last_tE = False
+    last_tM = False
+    
+    while not last_tE or not last_tM:
+        tE_next = tEn_aden_kerker_coefficient(N_electric + 1, size_parameter_core, size_parameter_shell, m_1, m_2)
+        tM_next = tMn_aden_kerker_coefficient(N_magnetic + 1, size_parameter_core, size_parameter_shell, m_1, m_2)
+        
+        if (2 * N_electric + 3) * xp.max(tE_next.imag) / (3 * xp.max(tE1.imag)) > tol:
+            N_electric += 1
+        else:
+            last_tE = True
+        
+        if (2 * N_magnetic + 3) * xp.max(tM_next.imag) / (3 * xp.max(tE1.imag)) > tol:
             N_magnetic += 1
         else:
             last_tM = True
