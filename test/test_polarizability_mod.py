@@ -123,9 +123,9 @@ def test_Zhou_data_with_Mie_dipole_approximation():
 
 
 def test_Mie_dipole_for_small_radius():
-    radius = 0.5  # nm, very small particle
+    radius = 0.05  # nm, very small particle
     medium_permittivity = 1.33**2
-    wavelength_nm = 4000  # nm
+    wavelength_nm = 1600  # nm
     frequency_eV = nm_to_eV(wavelength_nm)
     particle_permittivity = permittivity_ridx(frequency_eV, 'Au')
     size_parameter = frequency_to_wavenumber_nm(frequency_eV) * radius
