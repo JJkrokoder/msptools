@@ -16,7 +16,7 @@ def sphere_cross_section_from_Mie_coeffs(size_parameter : ArrayLike,
                                         mie_coeffs_tE : ArrayLike,
                                         mie_coeffs_tM : ArrayLike | None) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """
-    Compute the extinction, scattering, and absorption cross-sections of a sphere from its Mie coefficients.
+    Compute the extinction, scattering, and absorption cross-sections efficiency of a sphere from its Mie coefficients.
 
     Parameters
     ----------
@@ -55,9 +55,10 @@ def sphere_cross_section_from_Mie_coeffs(size_parameter : ArrayLike,
 def sphere_cross_section(wavelength_nm : ArrayLike,
                         radius_nm : ArrayLike,
                         medium_permittivity : ArrayLike,
-                        particle_material : str) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+                        particle_material : str,
+                        multipole_order : ArrayLike | None = None) -> tuple | tuple[tuple, tuple]:
     """
-    Compute the extinction, scattering, and absorption cross-sections of a sphere using Mie theory.
+    Compute the extinction, scattering, and absorption cross-sections efficiency of a sphere using Mie theory.
 
     Parameters
     ----------
@@ -69,11 +70,13 @@ def sphere_cross_section(wavelength_nm : ArrayLike,
         Permittivity of the surrounding medium.
     particle_material :
         Material of the sphere.
+    multipole_order :
+        If specified, compute the contribution of only this multipole order to the cross-sections. If None, compute the full cross-sections.
 
     Returns
     -------
-    C_ext, C_sca, C_abs :
-        The extinction, scattering, and absorption cross-sections (nm²).
+    C_ext, C_sca, C_abs or (C_ext_el, C_sca_el, C_abs_el), (C_ext_mag, C_sca_mag, C_abs_mag) :
+        The extinction, scattering, and absorption cross-sections (nm²) of the sphere. If multipole_order is specified, returns a tuple containing the contributions of the specified multipole order to the electric and magnetic cross-sections, respectively.
     """
     
     if not np.isscalar(wavelength_nm):
@@ -91,6 +94,22 @@ def sphere_cross_section(wavelength_nm : ArrayLike,
     
     x = 2 * pi * radius_nm / wavelength_nm * medium_permittivity**0.5
     
+    if multipole_order is not None:
+        if multipole_order < 1:
+            raise ValueError("Multipole order must be a positive integer")
+        n = multipole_order
+        tE_n = tE_n_coefficient(n, x, m)
+        tM_n = tM_n_coefficient(n, x, m)
+        CS_el_ext = 2.0/x**2 * (2 * n + 1) * tE_n.imag
+        CS_el_sca = 2.0/x**2 * (2 * n + 1) * abs(tE_n)**2
+        CS_el_abs = CS_el_ext - CS_el_sca
+        CS_mag_ext = 2.0/x**2 * (2 * n + 1) * tM_n.imag
+        CS_mag_sca = 2.0/x**2 * (2 * n + 1) * abs(tM_n)**2
+        CS_mag_abs = CS_mag_ext - CS_mag_sca
+        CS_el = (CS_el_ext, CS_el_sca, CS_el_abs)
+        CS_mag = (CS_mag_ext, CS_mag_sca, CS_mag_abs)
+        return CS_el, CS_mag
+    
     N_electric, N_magnetic = select_multipole_orders_sphere(x, m)
     
     tE_n = xp.array([tE_n_coefficient(n, x, m) for n in range(1, N_electric + 1)])
@@ -103,9 +122,10 @@ def core_shell_sphere_cross_section(wavelength_nm : ArrayLike,
                         radius_shell_nm : ArrayLike,
                         medium_permittivity : ArrayLike,
                         core_material : str,
-                        shell_material : str) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+                        shell_material : str,
+                        multipole_order : ArrayLike | None = None) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """
-    Compute the extinction, scattering, and absorption cross-sections of a core-shell sphere using Mie theory.
+    Compute the extinction, scattering, and absorption cross-sections efficiency of a core-shell sphere using Mie theory.
 
     Parameters
     ----------
@@ -121,7 +141,9 @@ def core_shell_sphere_cross_section(wavelength_nm : ArrayLike,
         Material of the core.
     shell_material :
         Material of the shell.
-    
+    multipole_order :
+        If specified, compute the contribution of only this multipole order to the cross-sections. If None, compute the full cross-sections.
+        
     Returns
     -------
     C_ext, C_sca, C_abs :
@@ -148,6 +170,22 @@ def core_shell_sphere_cross_section(wavelength_nm : ArrayLike,
     x_core = 2 * pi * radius_core_nm / wavelength_nm * medium_permittivity**0.5
     x_shell = 2 * pi * radius_shell_nm / wavelength_nm * medium_permittivity**0.5
     
+    if multipole_order is not None:
+        if multipole_order < 1:
+            raise ValueError("Multipole order must be a positive integer")
+        n = multipole_order
+        tE_n = tEn_aden_kerker_coefficient(n, x_core, x_shell, m_core, m_shell)
+        tM_n = tMn_aden_kerker_coefficient(n, x_core, x_shell, m_core, m_shell)
+        CS_el_ext = 2.0/x_shell**2 * (2 * n + 1) * tE_n.imag
+        CS_el_sca = 2.0/x_shell**2 * (2 * n + 1) * abs(tE_n)**2
+        CS_el_abs = CS_el_ext - CS_el_sca
+        CS_mag_ext = 2.0/x_shell**2 * (2 * n + 1) * tM_n.imag
+        CS_mag_sca = 2.0/x_shell**2 * (2 * n + 1) * abs(tM_n)**2
+        CS_mag_abs = CS_mag_ext - CS_mag_sca
+        CS_el = (CS_el_ext, CS_el_sca, CS_el_abs)
+        CS_mag = (CS_mag_ext, CS_mag_sca, CS_mag_abs)
+        return CS_el, CS_mag
+    
     N_electric, N_magnetic = select_multipole_orders_core_shell_sphere(x_core, x_shell, m_core, m_shell)
     
     tE_n = xp.array([tEn_aden_kerker_coefficient(n, x_core, x_shell, m_core, m_shell) for n in range(1, N_electric + 1)])
@@ -164,7 +202,7 @@ def sphere_cross_section_multipole_contribution(n: ArrayLike,
                         medium_permittivity : ArrayLike,
                         particle_material : str) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """
-    Compute the contribution of a specific multipole order to the extinction, scattering, and absorption cross-sections of a sphere using Mie theory.
+    Compute the contribution of a specific multipole order to the extinction, scattering, and absorption cross-sections efficiency of a sphere using Mie theory.
     
     Parameters
     ----------
@@ -211,7 +249,7 @@ def core_shell_sphere_cross_section_multipole_contribution(n: ArrayLike,
                         core_material : str,
                         shell_material : str) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """
-    Compute the contribution of a specific multipole order to the extinction, scattering, and absorption cross-sections of a core-shell sphere using Mie theory.
+    Compute the contribution of a specific multipole order to the extinction, scattering, and absorption cross-sections efficiency of a core-shell sphere using Mie theory.
     
     Parameters
     ----------
