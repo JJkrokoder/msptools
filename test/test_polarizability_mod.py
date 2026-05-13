@@ -28,11 +28,12 @@ class Test_Core_Shell:
     
     e1 = -2.5676
     e2 = 3.6391
+    medium_permittivity = 1.35**2
     
     def test_Core_Shell_Clausius_Mossotti_no_shell(self):
         radius_core = 0.08  # um
         radius_shell = 0.08 + 1e-10  # um, tiny shell
-        medium_permittivity = 1
+        medium_permittivity = self.medium_permittivity
         
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
@@ -45,7 +46,7 @@ class Test_Core_Shell:
     def test_Core_Shell_Clausius_Mossotti_no_core(self):
         radius_core = 1e-10  # um, tiny core
         radius_shell = 0.08  # um
-        medium_permittivity = 1
+        medium_permittivity = self.medium_permittivity
         
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
@@ -59,7 +60,7 @@ class Test_Core_Shell:
         radius_core = 0.08  # um
         radius_shell = 0.16
         wave_number = 2 * np.pi / 1000
-        medium_permittivity = 1
+        medium_permittivity = self.medium_permittivity
         
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
@@ -73,7 +74,7 @@ class Test_Core_Shell:
         radius_core = 0.08  # um
         radius_shell = 0.08 # um, no shell
         wave_number = 2 * np.pi / 0.5
-        medium_permittivity = 1
+        medium_permittivity = self.medium_permittivity
         
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
@@ -87,7 +88,7 @@ class Test_Core_Shell:
         radius_core = 1e-10  # um, no core
         radius_shell = 0.08 # um, no core
         wave_number = 2 * np.pi / 0.5
-        medium_permittivity = 1
+        medium_permittivity = self.medium_permittivity
         
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
