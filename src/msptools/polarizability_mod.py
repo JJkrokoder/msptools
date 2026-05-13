@@ -72,7 +72,7 @@ def Core_Shell_Clausius_Mossotti(radius_core: float | ArrayLike,
     e2 = particle_permittivity_shell
     e_m = medium_permittivity  
     
-    prefactor = 4 * pi * b3 * e_m
+    prefactor = 4 * pi * b3
     
     numerator = (e2 - e_m) * (e1 + 2 * e2) * b3 + (e1 - e2) * (2 * e2 + e_m) * a3
     denominator = (e2 + 2 * e_m) * (e1 + 2 * e2) * b3 + 2 * (e1 - e2) * (e2 - e_m) * a3  
