@@ -1,35 +1,20 @@
 import numpy as np
 import msptools as msp
 
-class Test_General_Field():
-
-    def test_initialize_with_frequency_ev(self):
-        field = msp.Field(frequency=2.0, frequency_unit="eV")
-        assert np.isclose(field.frequency_eV, 2.0), "Field frequency should be initialized to 2.0 eV"
-    
-    def test_initialize_with_wavelength_nm(self):
-        field = msp.Field(wavelength=500.0, wavelength_unit="nm")
-        wavelength_nm = 500.0  # Already in nm
-        frequency_eV = 1239.84193 / wavelength_nm
-        assert np.isclose(field.frequency_eV, frequency_eV), f"Field frequency should be initialized to ~{frequency_eV} eV"
-        assert np.isclose(field.wavelength_nm, wavelength_nm), f"Field wavelength should be initialized to {wavelength_nm} nm"
-
-
 class Test_Plane_Wave_Field():
 
     def test_initialize_plane_wave_field(self):
         direction = np.array([0, 1, 1])
         amplitude = 1.0
-        polarization = np.array([1.0, 0.0, 0.0])
-        frequency = 2.0  # eV
+        polarization = np.array([1.2, 0.0, 0.0])
+        wavelength = 500.0  # nm
 
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   frequency=frequency,
-                                   frequency_unit="eV")
+                                   wavelength_nm=wavelength)
         
-        assert np.isclose(field.frequency_eV, frequency), "Field frequency should be initialized to 2.0 eV"
+        assert np.isclose(field.wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
@@ -43,8 +28,7 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   wavelength=wavelength,
-                                   wavelength_unit="nm")
+                                   wavelength_nm=wavelength)
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
@@ -54,7 +38,7 @@ class Test_Plane_Wave_Field():
                                    [1.0j, 0.0, 0.0],
                                    [-1.0, 0.0, 0.0]])
         
-        computed_field = field.external_field_function(positions)
+        computed_field = field.get_external_field_in_positions(positions, medium_permittivity=1.0)
 
         assert np.allclose(computed_field, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_field}"
     
@@ -67,8 +51,7 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   wavelength=wavelength,
-                                   wavelength_unit="nm")
+                                   wavelength_nm=wavelength)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
@@ -79,7 +62,7 @@ class Test_Plane_Wave_Field():
                                                             np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), np.array(direction)),
                                                             np.array(polarization))
 
-        computed_gradient = field.external_gradient_function(positions_nm)
+        computed_gradient = field.get_external_gradient_in_positions(positions_nm, medium_permittivity=1.0)
 
         assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
 

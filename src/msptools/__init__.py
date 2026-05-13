@@ -66,13 +66,12 @@ class System:
             particle_types = [particle_types]
         self.particle_types = particle_types
         self.field = field
-        self.field.set_medium_permittivity(medium_permittivity)
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles(self.xp)
-        self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.frequency_eV) * self.xp.sqrt(self.medium_permittivity)
+        self.medium_wave_number_nm = 2 * pi * self.medium_permittivity**0.5 / self.field.wavelength_nm
         for ptype in self.particle_types:
-            ptype.compute_polarizability(frequency = self.field.frequency_eV, medium_permittivity=self.medium_permittivity)
+            ptype.compute_polarizability(frequency = eV_to_nm(self.field.wavelength_nm), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: ArrayLike,
@@ -114,7 +113,7 @@ class System:
         """
         
         positions = self.particles.positions
-        external_field = self.field.get_external_field_in_positions(positions)
+        external_field = self.field.get_external_field_in_positions(positions, self.medium_permittivity)
         field_solution = solve_MSP(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
@@ -132,7 +131,7 @@ class System:
             The electric field gradient at the specified positions.
         """
         
-        external_gradient = self.field.get_external_gradient_in_positions(self.particles.positions)
+        external_gradient = self.field.get_external_gradient_in_positions(self.particles.positions, self.medium_permittivity)
         green_tensor_derivative = construct_green_tensor_gradient(self.particles.positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
