@@ -4,7 +4,16 @@ except ImportError:
     import numpy as np
     
 import pytest
-from msptools.GreenTensor_Electric import *
+from msptools.GreenTensor_Electric import (G_0_function, 
+                                           G_1_function, 
+                                           G_0_derivative_function, 
+                                           G_1_derivative_function, 
+                                           construct_green_tensor, 
+                                           pair_green_tensor_derivative, 
+                                           construct_green_tensor_gradient,
+                                           pairwise_green_tensor,
+                                            scattering_term,
+                                            scat_green_field_from_rel_vecs_dipoles, scattering_term_batched)
 
 class Test_ConstructGreenTensor:
 
@@ -74,8 +83,48 @@ class Test_G_funtions:
         der_g1 = G_1_derivative_function(distance, self.wave_number)
         expected_der_g1 = -15 / (4 * np.pi * self.wave_number**2 * distance**6)
         assert np.allclose(der_g1, expected_der_g1, rtol=1e-5), "Derivative of G_1 function does not match near-field approximation."
-    
 
+class Test_PairWiseGreenTensor:
+    
+    wave_number = 2.0
+    
+    def test_two_particle_consistency(self):
+        pos_i = np.array([0, 0, 0])
+        pos_j = np.array([1.5, 0, 0])
+        g_ij = pairwise_green_tensor(pos_i - pos_j, self.wave_number)
+        expected_g_ij = construct_green_tensor(np.array([pos_i, pos_j]), self.wave_number)[0, 1]
+        assert np.allclose(g_ij, expected_g_ij), "Pairwise Green's tensor does not match the corresponding block in the full Green's tensor."
+    
+    def test_shape_multiple_particles(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        pairwise_g = pairwise_green_tensor(positions[:, None, :] - positions[None, :, :], self.wave_number)
+        expected_shape = (positions.shape[0], positions.shape[0], positions.shape[1], positions.shape[1])
+        assert pairwise_g.shape == expected_shape, "Pairwise Green's tensor shape mismatch for multiple particles."
+    
+    def test_shape_multiple_rel_vecs(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        mask = ~np.eye(positions.shape[0], dtype=bool)
+        rel_vecs_0 = rel_vecs[0][mask[0]]
+        pairwise_g = pairwise_green_tensor(rel_vecs_0, self.wave_number)
+        expected_shape = (rel_vecs_0.shape[0], positions.shape[1], positions.shape[1])
+        assert pairwise_g.shape == expected_shape, "Pairwise Green's tensor shape mismatch for multiple relative vectors."
+
+class Test_ApplyGreenTensor:
+    
+    wave_number = 2.0
+    
+    def test_consistency_with_full_green_tensor(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        dipoles = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering = scat_green_field_from_rel_vecs_dipoles(rel_vecs, dipoles, self.wave_number)
+        expected_scattering = scattering_term(rel_vecs, self.wave_number, dipoles)
+
+        assert scattering.shape == expected_scattering.shape, "Output shape mismatch between scat_green_field_from_rel_vecs_dipoles and scattering_term."
+        assert np.allclose(scattering, expected_scattering), "Applying Green's tensor to dipoles does not match the expected scattering field computed from the full Green's tensor."
+        
+        
 class Test_PairGreenTensor:
 
     wave_number = 2.0
@@ -214,3 +263,42 @@ class Test_ConstructGreenTensorGradient:
         anti_transpose = -self.green_tensor_gradient.transpose(1, 0, 2, 3, 4)
         assert np.allclose(self.green_tensor_gradient, anti_transpose), "Green tensor gradient is not antisymmetric with respect to particle indices."
 
+class Test_ScatteringTerm:
+    
+    wave_number = 2.0
+    
+    def test_consistency_with_green_tensor(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        dipole_moments = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
+        expected_scattering_field = np.zeros_like(scattering_field)
+        for j in range(positions.shape[0]):
+            for i in range(positions.shape[0]):
+                if i != j:
+                    expected_scattering_field[j] += construct_green_tensor(np.array([positions[i], positions[j]]), self.wave_number)[0, 1] @ dipole_moments[i]*self.wave_number**2
+        assert np.allclose(scattering_field, expected_scattering_field), "Scattering term does not match the expected values."
+        
+    def test_1_particle_zero_scattering(self):
+        positions = np.array([[0, 0, 0]])
+        dipole_moments = np.array([[1, 0, 0]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
+        expected_scattering_field = np.zeros_like(scattering_field)
+        assert np.allclose(scattering_field, expected_scattering_field), "Scattering term for a single particle should be zero."
+              
+        
+def test_scattering_matvec():
+    N = 5
+    d = 3
+    p = np.random.rand(N, d)
+    positions = np.random.rand(N, d)
+    wave_number = 2.0
+    rel_vecs = positions[:, None, :] - positions[None, :, :]
+    G_0 = G_0_function(np.linalg.norm(rel_vecs, axis=-1), wave_number)
+    G_1 = G_1_function(np.linalg.norm(rel_vecs, axis=-1), wave_number)
+
+    S1 = scattering_term_batched(rel_vecs, wave_number, p, G_0, G_1)
+    S2 = scat_green_field_from_rel_vecs_dipoles(rel_vecs, p, wave_number)
+
+    assert np.allclose(S1, S2, atol=1e-8)

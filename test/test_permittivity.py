@@ -32,7 +32,7 @@ class Test_RidxPermittivity():
         frequency_ev = 2.50
         material = "Au"
         epsilon = permittivity_ridx(frequency=frequency_ev, material=material)
-        expected_epsilon = -1.92 + 2.79j  # Known value for gold at 2.5 eV (Babar data)
+        expected_epsilon = -2.28 + 3.81j  # Known value for gold at 2.5 eV (Babar data)
         assert np.isclose(epsilon.real, expected_epsilon.real, rtol=1e-2), f"Expected real part {expected_epsilon.real}, got {epsilon.real}"
         assert np.isclose(epsilon.imag, expected_epsilon.imag, rtol=1e-2), f"Expected imaginary part {expected_epsilon.imag}, got {epsilon.imag}"
     

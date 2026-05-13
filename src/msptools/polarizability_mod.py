@@ -1,18 +1,14 @@
 from .backend import get_backend
 from typing import Callable
-from scipy.special import spherical_jn as sph_jn
-from scipy.special import spherical_yn as sph_yn
 from scipy.constants import pi
 from numpy.typing import ArrayLike
 from .permittivity import permittivity_ridx
+from .tools.unit_calcs import nm_to_eV
+from .tools.mie_theory import tE_n_coefficient, hankel_plus, tEn_aden_kerker_coefficient
 from scipy.constants import c, e, h
 
 def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
     """Select the polarizability computation method based on the material and excitation wavelength."""  
-
-def hankel_plus(n: int, x: float, derivative: bool = False) -> complex:
-    """Compute the spherical Hankel function of the first kind."""
-    return sph_jn(n, x, derivative) * 1j - sph_yn(n, x, derivative)
 
 def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float) -> float:
     """
@@ -37,6 +33,51 @@ def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permit
     polarizability = 4 * pi * (radius**3) * (particle_permittivity - medium_permittivity) / (particle_permittivity + 2 * medium_permittivity)
 
     return polarizability
+
+def Core_Shell_Clausius_Mossotti(radius_core: float | ArrayLike,
+                                 radius_shell: float | ArrayLike,
+                                 medium_permittivity: float | ArrayLike,
+                                 particle_permittivity_core: complex | ArrayLike,
+                                 particle_permittivity_shell: complex | ArrayLike) -> complex | ArrayLike:
+    """
+    Calculate the polarizability of a core-shell particle using the Clausius-Mossotti relation.
+    
+    Parameters
+    ----------
+    radius_core : 
+        The radius of the core of the particle.
+    radius_shell :
+        The radius of the shell of the particle (including the core).
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity_core :
+        The permittivity of the core material.
+    particle_permittivity_shell :
+        The permittivity of the shell material.
+        
+    Returns
+    -------
+    complex | ArrayLike
+        The polarizability of the core-shell particle.
+        
+    Notes
+    -----
+    Ensure proper broadcasting of the input parameters if they are arrays.
+    """
+    
+    
+    a3 = radius_core**3
+    b3 = radius_shell**3
+    e1 = particle_permittivity_core
+    e2 = particle_permittivity_shell
+    e_m = medium_permittivity  
+    
+    prefactor = 4 * pi * b3
+    
+    numerator = (e2 - e_m) * (e1 + 2 * e2) * b3 + (e1 - e2) * (2 * e2 + e_m) * a3
+    denominator = (e2 + 2 * e_m) * (e1 + 2 * e2) * b3 + 2 * (e1 - e2) * (e2 - e_m) * a3  
+
+    return prefactor * numerator / denominator
 
 
 def Mie_size_dipole_approximation(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float) -> complex:
@@ -116,21 +157,54 @@ def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float
     - Wave number and radius should be in consistent units.
     """
     k_m = wave_number * medium_permittivity**0.5
-    k_p = wave_number * particle_permittivity**0.5
-    x_p = k_p * radius
-    x_m = k_m * radius
-    eps_m = medium_permittivity
-    eps_p = particle_permittivity
+    x = k_m * radius
+    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
 
-    t11 = eps_p * sph_jn(1,x_p) * (sph_jn(1,x_m) + x_m * sph_jn(1,x_m,derivative=True))
-    t12 = eps_m * sph_jn(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
-    t21 = eps_m * hankel_plus(1,x_m) * (sph_jn(1,x_p) + x_p * sph_jn(1,x_p,derivative=True))
-    t22 = eps_p * sph_jn(1,x_p) * (hankel_plus(1,x_m) + x_m * hankel_plus(1,x_m,derivative=True))
-
-    tE1 = (t11 - t12) / (t21 - t22)
-
+    tE1 = tE_n_coefficient(n=1, x_m=x, m=m)
     alpha_e = 6 * pi / (k_m**3) * tE1
     return alpha_e
+
+def Aden_Kerker_core_shell_polarizability(radius_core: float | ArrayLike, 
+                      radius_shell: float | ArrayLike, 
+                      medium_permittivity: complex | ArrayLike,
+                      particle_permittivity_core: complex | ArrayLike,
+                      particle_permittivity_shell: complex | ArrayLike,
+                      wave_number: complex | ArrayLike) -> complex | ArrayLike:
+    """
+    Calculate the electric dipole polarizability of a core-shell particle using the Aden-Kerker formulation of Mie theory.
+    
+    Parameters    
+    ----------
+    radius_core :
+        The radius of the core particle.
+    radius_shell :
+        The radius of the shell particle.
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity_core :
+        The permittivity of the core material.
+    particle_permittivity_shell :
+        The permittivity of the shell material.
+    wave_number :
+        The wave number of the incident light (in vacuum).
+
+    Returns
+    -------
+    complex | ArrayLike
+        The electric dipole polarizability of the core-shell particle using the Aden-Kerker formulation of Mie theory.
+    """
+    
+    k_m = wave_number * medium_permittivity ** 0.5
+
+    x2 = k_m * radius_shell
+    x1 = k_m * radius_core
+    
+    m1 = (particle_permittivity_core**0.5) / (medium_permittivity**0.5)
+    m2 = (particle_permittivity_shell**0.5) / (medium_permittivity**0.5)
+
+    tE1 = tEn_aden_kerker_coefficient(n=1, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
+    
+    return 6 * pi / (k_m**3) * tE1
 
 def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, num_particles: int, dimensions: int, xp) -> ArrayLike:
     """
@@ -164,7 +238,11 @@ def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, 
 
     return polarizability
 
-def compute_sphere_polarizability_DA(radius_nm: float, medium_permittivity: float, particle_material: str, wavelength_nm: float | ArrayLike) -> complex|ArrayLike:
+def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
+                                     medium_permittivity: float,
+                                     particle_material: str,
+                                     wavelength_nm: float | ArrayLike,
+                                     method: str = 'Mie') -> complex|ArrayLike:
     """
     Compute the polarizability of a spherical particle using the Mie electric dipole formula.
     
@@ -178,6 +256,9 @@ def compute_sphere_polarizability_DA(radius_nm: float, medium_permittivity: floa
         The material of the particle.
     wavelength_nm :
         The wavelength of the incident light in nanometers.
+    method :
+        The method to compute the polarizability. 
+        Options are 'Mie' for the full Mie solution, 'Mie_SA' for the size expansion approximation, or 'Clausius-Mossotti' for the quasistatic approximation.
     
     Returns
     -------
@@ -185,7 +266,56 @@ def compute_sphere_polarizability_DA(radius_nm: float, medium_permittivity: floa
         The polarizability of the spherical particle using the Mie electric dipole formula.
     """
     wave_number = 2 * pi / wavelength_nm
-    frequency_eV =  h * c / (wavelength_nm * 1e-9) / e
+    frequency_eV =  nm_to_eV(wavelength_nm)
     particle_permittivity = permittivity_ridx(frequency_eV, particle_material)
-    polarizability = Mie_electric_dipole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
+    if method == 'Mie':
+        polarizability = Mie_electric_dipole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
+    elif method == 'Mie_SA':
+        polarizability = Mie_size_dipole_approximation(radius_nm, medium_permittivity, particle_permittivity, wave_number)
+    elif method == 'Clausius-Mossotti':
+        polarizability = Clausius_Mossotti(radius_nm, medium_permittivity, particle_permittivity)
+    
+    return polarizability
+
+def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
+                                         radius_shell_nm: float | ArrayLike,
+                                         medium_permittivity: float,
+                                         material_core: str,
+                                         material_shell: str,
+                                         wavelength_nm: float | ArrayLike,
+                                         method: str = 'Aden-Kerker') -> complex|ArrayLike:
+    """
+    Compute the polarizability of a core-shell particle using the Mie electric dipole formula.
+    
+    Parameters
+    ----------
+    radius_core_nm :
+        The radius of the core of the particle in nanometers.
+    radius_shell_nm :
+        The radius of the shell of the particle in nanometers (including the core).
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    material_core :
+        The material of the core of the particle.
+    material_shell :
+        The material of the shell of the particle.
+    wavelength_nm :
+        The wavelength of the incident light in nanometers.
+    method :
+        The method to compute the polarizability. Options are 'Aden-Kerker' for the full Mie solution for core-shell particles, or 'Clausius-Mossotti' for the quasistatic approximation. 
+        
+    Returns
+    -------
+    complex|ArrayLike
+        The polarizability of the core-shell particle using the Mie electric dipole formula.
+    """
+    
+    wave_number = 2 * pi / wavelength_nm
+    frequency_eV =  nm_to_eV(wavelength_nm)
+    particle_permittivity_core = permittivity_ridx(frequency_eV, material_core)
+    particle_permittivity_shell = permittivity_ridx(frequency_eV, material_shell)
+    if method == 'Aden-Kerker':
+        polarizability = Aden_Kerker_core_shell_polarizability(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number)
+    elif method == 'Clausius-Mossotti':
+        polarizability = Core_Shell_Clausius_Mossotti(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell)
     return polarizability
