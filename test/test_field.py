@@ -66,4 +66,21 @@ class Test_Plane_Wave_Field():
 
         assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
 
+class Test_Standing_Wave_Field():
+
+    def test_initialize_standing_wave_field(self):
+        direction = np.array([0, 1, 1])
+        amplitude = 1.0
+        polarization = np.array([1.2, 0.0, 0.0])
+        wavelength = 500.0  # nm
+
+        field = msp.StandingWaveField(direction=direction,
+                                      amplitude=amplitude,
+                                      polarization=polarization,
+                                      wavelength_nm=wavelength)
+        
+        assert np.isclose(field.wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
+        expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
+        assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
 

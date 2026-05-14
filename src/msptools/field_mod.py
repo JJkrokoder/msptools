@@ -57,11 +57,9 @@ class PlaneWaveField(Field):
 
     def __post_init__(self) -> None:
         xp = get_backend(self.direction)
-        direction = xp.asarray(self.direction)
-        polarization = xp.asarray(self.polarization)
 
-        object.__setattr__(self, "direction", direction / xp.linalg.norm(direction))
-        object.__setattr__(self, "polarization", polarization / xp.linalg.norm(polarization))
+        object.__setattr__(self, "direction", self.direction / xp.linalg.norm(self.direction))
+        object.__setattr__(self, "polarization", self.polarization / xp.linalg.norm(self.polarization))
 
     def get_external_field_in_positions(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
         
@@ -81,62 +79,36 @@ class PlaneWaveField(Field):
             k_magnitude=pi*2/self.wavelength_nm * medium_permittivity**0.5
         )
      
-    
+@dataclass(frozen=True)   
 class StandingWaveField(Field):
     """Class representing a standing wave electromagnetic field."""
     
-    def __init__(self,
-                 direction: ArrayLike,
-                 amplitude: float | complex,
-                 polarization: ArrayLike,
-                 **kwargs) -> None:
-        """
-        Initialize a StandingWaveField object by specifying its direction, amplitude and frequency or wavelength.
+    direction: ArrayLike
+    amplitude: float | complex
+    polarization: ArrayLike
+    wavelength_nm : float
+    
+    def __post_init__(self) -> None:
+        xp = get_backend(self.direction)
 
-        Parameters
-        ----------
-        direction :
-            The propagation direction of the standing wave as a 3-element list. It is normalized by default.
-        amplitude :
-            The amplitude of the standing wave.
-        polarization :
-            The polarization vector of the standing wave. It is normalized by default.
-        frequency :
-            The frequency of the standing wave.
-        frequency_unit :
-            The unit of the frequency.
-        wavelength :
-            The wavelength of the standing wave.
-        wavelength_unit :
-            The unit of the wavelength.
-
-        Notes
-        -----
-        positions are considered to be in same units as wavelength (default nm).
-        """
-
-        super().__init__(**kwargs)
-        self.amplitude = amplitude
-        xp = get_backend(direction)
-        self.polarization = polarization / xp.linalg.norm(xp.asarray(polarization))
-        self.direction = xp.asarray(direction) / xp.linalg.norm(xp.asarray(direction))
-
-        if hasattr(self, 'medium_permittivity'):
-            wave_number_nm_medium = self.wave_number_um/1000 * self.medium_permittivity**0.5
-        else:
-            wave_number_nm_medium = self.wave_number_um/1000  # Convert um^-1 to nm^-1
+        object.__setattr__(self, "direction", self.direction / xp.linalg.norm(self.direction))
+        object.__setattr__(self, "polarization", self.polarization / xp.linalg.norm(self.polarization))
         
-        self.external_field_function = lambda positions: standing_wave_function(
+    def get_external_field_in_positions(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
+        
+        return standing_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            k_magnitude=pi*2/self.wavelength_nm * medium_permittivity**0.5
         )
 
-        self.external_gradient_function = lambda positions: standing_wave_gradient(
+    def get_external_gradient_in_positions(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
+        
+        return standing_wave_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=wave_number_nm_medium
+            k_magnitude=pi*2/self.wavelength_nm * medium_permittivity**0.5
         )
 
