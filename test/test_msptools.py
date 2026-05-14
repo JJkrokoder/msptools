@@ -41,8 +41,8 @@ class TestSystem:
         
         field_values = system.get_field_in_particles()
         
-        expected_field_1 = field.get_external_field_in_positions(np.array([[0.0, 0.0, 0.0]]), self.medium_permittivity)
-        expected_field_2 = field.get_external_field_in_positions(np.array([[250.0, 0.0, 0.0]]), self.medium_permittivity)
+        expected_field_1 = field.evaluate(np.array([[0.0, 0.0, 0.0]]), self.medium_permittivity)
+        expected_field_2 = field.evaluate(np.array([[250.0, 0.0, 0.0]]), self.medium_permittivity)
         
         assert field_values.shape == (2, 3), "Field values should have shape (num_particles, 3)"
         assert np.allclose(field_values[0], expected_field_1), "Field at first particle position should match evaluation"
