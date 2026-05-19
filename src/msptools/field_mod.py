@@ -49,13 +49,16 @@ class Field(ABC):
         """
         pass
     
-    def __add__(self, other: Field) -> Field:
+    def __add__(self, other):
         return SumField((self, other)).simplify()
     
-    def __mul__(self, scalar: float | complex) -> Field:
+    def __mul__(self, scalar: float | complex):
         return ScaledField(self, scalar).simplify()
     
     __rmul__ = __mul__
+    
+    def simplify(self):
+        return self
 
 @dataclass(frozen=True)
 class PlaneWaveField(Field):
@@ -128,7 +131,31 @@ class StandingWaveField(Field):
 class SumField(Field):
     """Class representing the sum of multiple electromagnetic fields."""
     
-    fields: Tuple[Field]
+    fields: Tuple[Field, ...]
+    wavelength_nm: float | None = None
+    
+    def __post_init__(self) -> None:
+        
+        wavelengths = []
+        
+        
+        for field in self.fields:
+            wavelength = getattr(field, "wavelength_nm", None) 
+            if field.wavelength_nm is not None:
+                wavelengths.append(field.wavelength_nm)
+            else:
+                object.__setattr__(self, "wavelength_nm", None)
+                return
+        if len(wavelengths) == 0:
+            object.__setattr__(self, "wavelength_nm", None)
+            return
+
+        first = wavelengths[0]
+        same_wavelength = all(np.isclose(w, first) for w in wavelengths[1:])
+        if same_wavelength:
+            object.__setattr__(self, "wavelength_nm", first)
+        else:
+            object.__setattr__(self, "wavelength_nm", None)
 
     def evaluate(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
         result = 0
@@ -146,6 +173,7 @@ class SumField(Field):
         
         flat_terms = []
         for field in self.fields:
+            field = field.simplify()
             if isinstance(field, SumField):
                 flat_terms.extend(field.fields)
             else:
@@ -162,6 +190,10 @@ class ScaledField(Field):
     
     field: Field
     scalar: float | complex
+    
+    @property
+    def wavelength_nm(self):
+        return getattr(self.field, "wavelength_nm", None)
 
     def evaluate(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
         return self.scalar * self.field.evaluate(positions, medium_permittivity)
