@@ -39,7 +39,7 @@ class TestSystem:
         positions = np.array([[0.0, 0.0, 0.0], [250.0, 0.0, 0.0]])
         system.add_particles(positions, particle_type=type1)
         
-        field_values = system.get_field_in_particles()
+        field_values = system.get_field_in_particles(positions)
         
         expected_field_1 = field.evaluate(np.array([[0.0, 0.0, 0.0]]), self.medium_permittivity)
         expected_field_2 = field.evaluate(np.array([[250.0, 0.0, 0.0]]), self.medium_permittivity)

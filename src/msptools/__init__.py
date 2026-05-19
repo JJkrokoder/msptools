@@ -71,7 +71,7 @@ class System:
         self.particles = Particles(self.xp)
         self.medium_wave_number_nm = 2 * pi * self.medium_permittivity**0.5 / self.field.wavelength_nm
         for ptype in self.particle_types:
-            ptype.compute_polarizability(frequency = eV_to_nm(self.field.wavelength_nm), medium_permittivity=self.medium_permittivity)
+            ptype.compute_polarizability(frequency = nm_to_eV(self.field.wavelength_nm), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: ArrayLike,
@@ -102,7 +102,7 @@ class System:
         polarizability = polarizability_to_matrix(particle_type.polarizability, positions.shape[0], 3, self.xp)
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
-    def get_field_in_particles(self, method : str = 'Inverse') -> ArrayLike:
+    def get_field_in_particles(self, positions: ArrayLike, method : str = 'Inverse') -> ArrayLike:
         """
         Get the electric field at specified positions by solving the Multiple Scattering Problem (MSP).
 
@@ -112,7 +112,6 @@ class System:
             The electric field at the specified positions.
         """
         
-        positions = self.particles.positions
         external_field = self.field.evaluate(positions, self.medium_permittivity)
         field_solution = solve_MSP(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
@@ -121,7 +120,7 @@ class System:
                                    method=method)
         return field_solution
     
-    def get_field_gradient_in_particles(self, current_field: ArrayLike) -> ArrayLike:
+    def get_field_gradient_in_particles(self, current_field: ArrayLike, positions: ArrayLike) -> ArrayLike:
         """
         Get the electric field gradient at specified positions by solving the Multiple Scattering Problem (MSP) for the gradient.
 
@@ -131,8 +130,8 @@ class System:
             The electric field gradient at the specified positions.
         """
         
-        external_gradient = self.field.evaluate_gradient(self.particles.positions, self.medium_permittivity)
-        green_tensor_derivative = construct_green_tensor_gradient(self.particles.positions, self.medium_wave_number_nm)
+        external_gradient = self.field.evaluate_gradient(positions, self.medium_permittivity)
+        green_tensor_derivative = construct_green_tensor_gradient(positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
         gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
@@ -153,7 +152,7 @@ class System:
         position :
             The new position of the particle. This can be a 1D-three-element array-like.
         """
-        position = self.xp.array(position)* get_multiplier_nanometers(self.positions_unit)
+        position = self.xp.array(position) * get_multiplier_nanometers(self.positions_unit)
         if position.ndim != 1 or position.shape[0] != 3:
             raise ValueError("Position must be a 1D-three-element array-like.")
         self.particles.set_position(index, position.tolist())
@@ -169,7 +168,7 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self) -> ArrayLike:
+    def compute_forces(self, positions: ArrayLike) -> ArrayLike:
         """
         Compute the optical forces on particles at specified positions.
 
@@ -179,8 +178,8 @@ class ForceCalculator:
             The computed optical forces on the particles.
         """
 
-        E_field = self.system.get_field_in_particles()
-        E_grad = self.system.get_field_gradient_in_particles(E_field)
+        E_field = self.system.get_field_in_particles(positions=positions)
+        E_grad = self.system.get_field_gradient_in_particles(current_field=E_field, positions=positions)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 
