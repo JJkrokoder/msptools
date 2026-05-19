@@ -20,10 +20,10 @@ class SphereType(ParticleType):
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float, dim: int = 3) -> complex:
-        scalar_polarizability = Mie_electric_dipole_polarizability(radius=self.radius,
+        scalar_polarizability = compute_sphere_polarizability_DA(radius_nm=self.radius,
                                   medium_permittivity=medium_permittivity,
-                                  particle_permittivity=permittivity_ridx(frequency, self.material),
-                                  wave_number=frequency_to_wavenumber_nm(frequency))
+                                  particle_material=self.material,
+                                  wavelength_nm=eV_to_nm(frequency))
         self.polarizability = scalar_polarizability
 
 class CoreShellType(ParticleType):
@@ -56,11 +56,13 @@ class CoreShellType(ParticleType):
 
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        scalar_polarizability = Core_Shell_Clausius_Mossotti(radius_core=self.radius_core,
-                                  radius_shell=self.radius_shell,
+        scalar_polarizability = compute_core_shell_polarizability_DA(radius_core_nm=self.radius_core,
+                                  radius_shell_nm=self.radius_shell,
                                   medium_permittivity=medium_permittivity,
-                                  particle_permittivity_core=permittivity_ridx(frequency, self.material_core),
-                                  particle_permittivity_shell=permittivity_ridx(frequency, self.material_shell))
+                                  material_core=self.material_core,
+                                  material_shell=self.material_shell,
+                                  wavelength_nm=eV_to_nm(frequency))
+                                  
         self.polarizability = scalar_polarizability
         
     
