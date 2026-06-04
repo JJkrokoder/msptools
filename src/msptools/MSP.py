@@ -15,7 +15,7 @@ def solve_MSP(polarizability : ArrayLike,
               external_field : ArrayLike,
               wave_number : float,
               positions : ArrayLike,
-              method : str = 'GMRES',
+              method : str,
               tolerance : float = 1e-6) -> ArrayLike:
     """
     Solve the Multiple Scattering Problem (MSP) for the electric field at specified positions.
