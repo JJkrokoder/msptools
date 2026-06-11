@@ -12,9 +12,9 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   wavelength_nm=wavelength)
+                                   medium_wavelength_nm=wavelength)
         
-        assert np.isclose(field.wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        assert np.isclose(field.medium_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
@@ -28,7 +28,7 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   wavelength_nm=wavelength)
+                                   medium_wavelength_nm=wavelength)
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
@@ -38,7 +38,7 @@ class Test_Plane_Wave_Field():
                                    [1.0j, 0.0, 0.0],
                                    [-1.0, 0.0, 0.0]])
         
-        computed_field = field.evaluate(positions, medium_permittivity=1.0)
+        computed_field = field.evaluate(positions)
 
         assert np.allclose(computed_field, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_field}"
     
@@ -51,7 +51,7 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   wavelength_nm=wavelength)
+                                   medium_wavelength_nm=wavelength)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
@@ -62,7 +62,7 @@ class Test_Plane_Wave_Field():
                                                             np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), np.array(direction)),
                                                             np.array(polarization))
 
-        computed_gradient = field.evaluate_gradient(positions_nm, medium_permittivity=1.0)
+        computed_gradient = field.evaluate_gradient(positions_nm)
 
         assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
 
@@ -77,9 +77,9 @@ class Test_Standing_Wave_Field():
         field = msp.StandingWaveField(direction=direction,
                                       amplitude=amplitude,
                                       polarization=polarization,
-                                      wavelength_nm=wavelength)
+                                      medium_wavelength_nm=wavelength)
         
-        assert np.isclose(field.wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        assert np.isclose(field.medium_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
@@ -91,12 +91,12 @@ class Test_Sum_Field():
     field1 = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                wavelength_nm=500.0)
+                                medium_wavelength_nm=500.0)
     
     field2 = msp.StandingWaveField(direction=np.array([0, 1, 0]),
                                 amplitude=0.5,
                                 polarization=np.array([0.0, 1.0, 0.0]),
-                                wavelength_nm=600.0)
+                                medium_wavelength_nm=600.0)
     
     def test_sum_field_initialization(self):
         
@@ -112,10 +112,10 @@ class Test_Sum_Field():
         sum_field = self.field1 + self.field2
         
         position = np.array([[100.0, 0.0, 0.0]])
-        field_1_eval = self.field1.evaluate(position, medium_permittivity=self.medium_permittivity)
-        field_2_eval = self.field2.evaluate(position, medium_permittivity=self.medium_permittivity)
+        field_1_eval = self.field1.evaluate(position)
+        field_2_eval = self.field2.evaluate(position)
         expected_sum = field_1_eval + field_2_eval
-        computed_sum = sum_field.evaluate(position, medium_permittivity=self.medium_permittivity)
+        computed_sum = sum_field.evaluate(position)
         assert np.allclose(computed_sum, expected_sum, atol=1e-4), f"Expected {expected_sum}, got {computed_sum}"
     
     def test_associative_sum_field(self):
@@ -123,7 +123,7 @@ class Test_Sum_Field():
         field3 = msp.PlaneWaveField(direction=np.array([1, 0, 0]),
                                 amplitude=0.3,
                                 polarization=np.array([0.0, 0.0, 1.0]),
-                                wavelength_nm=700.0)
+                                medium_wavelength_nm=700.0)
         
         sum_field_1 = self.field1 + (self.field2 + field3)
         sum_field_2 = (self.field1 + self.field2) + field3
@@ -138,7 +138,7 @@ class Test_Scaled_Field():
     field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                wavelength_nm=500.0)
+                                medium_wavelength_nm=500.0)
     
     def test_scaled_field_simplify(self):
         
@@ -157,8 +157,8 @@ class Test_Scaled_Field():
         scaled_field = self.scalar * self.field
         
         position = np.array([[100.0, 0.0, 0.0]])
-        original_eval = self.field.evaluate(position, medium_permittivity=self.medium_permittivity)
+        original_eval = self.field.evaluate(position)
         expected_scaled_eval = self.scalar * original_eval
-        computed_scaled_eval = scaled_field.evaluate(position, medium_permittivity=self.medium_permittivity)
+        computed_scaled_eval = scaled_field.evaluate(position)
         assert np.allclose(computed_scaled_eval, expected_scaled_eval, atol=1e-4), f"Expected {expected_scaled_eval}, got {computed_scaled_eval}"    
         
