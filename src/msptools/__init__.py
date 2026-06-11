@@ -69,9 +69,10 @@ class System:
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles(self.xp)
-        self.medium_wave_number_nm = 2 * pi * self.medium_permittivity**0.5 / self.field.wavelength_nm
+        self.medium_wave_number_nm = 2 * pi / self.field.medium_wavelength_nm
+        self.vacuum_wl_nm = self.field.medium_wavelength_nm * self.medium_permittivity**0.5
         for ptype in self.particle_types:
-            ptype.compute_polarizability(frequency = nm_to_eV(self.field.wavelength_nm), medium_permittivity=self.medium_permittivity)
+            ptype.compute_polarizability(frequency = nm_to_eV(self.vacuum_wl_nm), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: ArrayLike,
@@ -112,7 +113,7 @@ class System:
             The electric field at the specified positions.
         """
         
-        external_field = self.field.evaluate(positions, self.medium_permittivity)
+        external_field = self.field.evaluate(positions)
         field_solution = solve_MSP(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
@@ -130,7 +131,7 @@ class System:
             The electric field gradient at the specified positions.
         """
         
-        external_gradient = self.field.evaluate_gradient(positions, self.medium_permittivity)
+        external_gradient = self.field.evaluate_gradient(positions)
         green_tensor_derivative = construct_green_tensor_gradient(positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
