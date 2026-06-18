@@ -127,8 +127,12 @@ class Test_Sum_Field():
         
         sum_field_1 = self.field1 + (self.field2 + field3)
         sum_field_2 = (self.field1 + self.field2) + field3
+
+        field_tuple = (self.field1, self.field2, field3) 
         
         assert sum_field_1.simplify() == sum_field_2.simplify(), "Sum of fields should be associative after simplification"
+        assert sum_field_1.simplify().fields == field_tuple, "Simplified sum field should contain all original fields in order"
+        assert sum_field_2.simplify().fields == field_tuple, "Simplified sum field should contain all original fields in order"
     
 class Test_Scaled_Field():
     
@@ -161,4 +165,27 @@ class Test_Scaled_Field():
         expected_scaled_eval = self.scalar * original_eval
         computed_scaled_eval = scaled_field.evaluate(position)
         assert np.allclose(computed_scaled_eval, expected_scaled_eval, atol=1e-4), f"Expected {expected_scaled_eval}, got {computed_scaled_eval}"    
-        
+
+
+def test_distributive_property_of_sum_and_scalar_multiplication():
+    
+    scalar = 2.5
+    
+    field1 = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                amplitude=1.0,
+                                polarization=np.array([1.0, 0.0, 0.0]),
+                                medium_wavelength_nm=500.0)
+    
+    field2 = msp.StandingWaveField(direction=np.array([0, 1, 0]),
+                                amplitude=0.5,
+                                polarization=np.array([0.0, 1.0, 0.0]),
+                                medium_wavelength_nm=600.0)
+    
+    sum_field = field1 + field2
+    scaled_sum_field = scalar * sum_field
+    expected_scaled_sum = scalar * field1 + scalar * field2
+    computed_scaled_sum = scaled_sum_field.evaluate(np.array([[100.0, 100.0, 100.0]]))
+    expected_scaled_sum_eval = expected_scaled_sum.evaluate(np.array([[100.0, 100.0, 100.0]]))
+    
+    assert np.allclose(computed_scaled_sum, expected_scaled_sum_eval, atol=1e-4), f"Expected {expected_scaled_sum_eval}, got {computed_scaled_sum}"
+
