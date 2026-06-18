@@ -48,6 +48,7 @@ class Field(ABC):
             The external electric field gradient at the specified positions.
         """
         pass
+
     
     def __add__(self, other):
         return SumField((self, other)).simplify()
@@ -79,10 +80,11 @@ class PlaneWaveField(Field):
     medium_wavelength_nm : float
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "xp", get_backend(self.direction))
+        xp = get_backend(self.direction)
 
-        object.__setattr__(self, "direction", self.direction / self.xp.linalg.norm(self.direction))
-        object.__setattr__(self, "polarization", self.polarization / self.xp.linalg.norm(self.polarization))
+        object.__setattr__(self, "direction", self.direction / xp.linalg.norm(self.direction))
+        object.__setattr__(self, "polarization", self.polarization / xp.linalg.norm(self.polarization))
+        object.__setattr__(self, "k_vector", 2 * pi * self.direction / self.medium_wavelength_nm)
 
     def evaluate(self, positions: ArrayLike) -> ArrayLike:
         
@@ -103,7 +105,8 @@ class PlaneWaveField(Field):
         )
     
     def translate(self, displacement: ArrayLike) -> Field:
-        phase_shift = self.xp.exp(-1j * 2 * pi * np.dot(self.direction, displacement) / self.medium_wavelength_nm)
+        xp = get_backend(self.direction)
+        phase_shift = xp.exp(-1j * xp.dot(self.k_vector, displacement))
         return PlaneWaveField(
             direction=self.direction,
             amplitude=self.amplitude * phase_shift,
@@ -150,27 +153,26 @@ class SumField(Field):
     """Class representing the sum of multiple electromagnetic fields."""
     
     fields: Tuple[Field, ...]
-    medium_wavelength_nm: float | None = None
     
-    def __post_init__(self) -> None:
-        
-        wavelengths = []
-        
-        
-        for field in self.fields:
-            wavelength = getattr(field, "medium_wavelength_nm", None) 
-            if wavelength is not None:
-                wavelengths.append(field.medium_wavelength_nm)
-        if len(wavelengths) == 0:
-            object.__setattr__(self, "medium_wavelength_nm", None)
-            return
+    @property
+    def medium_wavelength_nm(self):
+
+        wavelengths = [
+            f.medium_wavelength_nm
+            for f in self.fields
+            if getattr(f, "medium_wavelength_nm", None) is not None
+        ]
+
+        if not wavelengths:
+            return None
 
         first = wavelengths[0]
-        same_wavelength = all(np.isclose(w, first) for w in wavelengths[1:])
-        if same_wavelength:
-            object.__setattr__(self, "medium_wavelength_nm", first)
-        else:
-            object.__setattr__(self, "medium_wavelength_nm", None)
+
+        if all(np.isclose(w, first) for w in wavelengths[1:]):
+            return first
+
+        return None
+            
 
     def evaluate(self, positions: ArrayLike) -> ArrayLike:
         result = 0
@@ -212,13 +214,13 @@ class ScaledField(Field):
     
     @property
     def medium_wavelength_nm(self):
-        return getattr(self.field, "medium_wavelength_nm", None)
+        return self.field.medium_wavelength_nm
 
-    def evaluate(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
-        return self.scalar * self.field.evaluate(positions, medium_permittivity)
+    def evaluate(self, positions: ArrayLike) -> ArrayLike:
+        return self.scalar * self.field.evaluate(positions)
 
-    def evaluate_gradient(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
-        return self.scalar * self.field.evaluate_gradient(positions, medium_permittivity)
+    def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.scalar * self.field.evaluate_gradient(positions)
 
     def simplify(self) -> Field:
         if self.scalar == 1:
@@ -239,6 +241,8 @@ class ScaledField(Field):
                 polarization=self.field.polarization,
                 medium_wavelength_nm=self.field.medium_wavelength_nm
             )
+        elif isinstance(self.field, SumField):
+            return SumField(tuple(ScaledField(f, self.scalar).simplify() for f in self.field.fields)).simplify()
         else:
             return self
         
@@ -256,11 +260,11 @@ class TranslatedField(Field):
     def medium_wavelength_nm(self):
         return getattr(self.field, "medium_wavelength_nm", None)
 
-    def evaluate(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
-        return self.field.evaluate(positions - self.displacement, medium_permittivity)
+    def evaluate(self, positions: ArrayLike) -> ArrayLike:
+        return self.field.evaluate(positions - self.displacement)
     
-    def evaluate_gradient(self, positions: ArrayLike, medium_permittivity: float) -> ArrayLike:
-        return self.field.evaluate_gradient(positions - self.displacement, medium_permittivity)
+    def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.field.evaluate_gradient(positions - self.displacement)
     
     def simplify(self) -> Field:
         if isinstance(self.field, TranslatedField):
