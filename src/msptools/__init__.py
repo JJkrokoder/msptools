@@ -12,6 +12,7 @@ from .tools.unit_calcs import *
 from .GreenTensor_Electric import *
 from .MSP import *
 from .backend import get_backend
+from .observables.scattering import *
 from numpy.typing import ArrayLike, NDArray
 from typing import List
 

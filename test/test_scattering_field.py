@@ -1,4 +1,4 @@
-from msptools.observables.scattering import compute_scattering_field
+from msptools.observables.scattering import compute_scattering_field, obtain_effective_dipole
 import numpy as np
 from scipy.constants import pi
 from cmath import exp
@@ -88,7 +88,7 @@ class TestScatteringFieldComputation:
     def test_sphere_intensity_integral(self):
         # Test the integral of the intensity over a sphere surrounding a single dipole
         particle_positions = np.array([[0.0, 0.0, 0.0]])
-        particle_dipoles = np.array([[1.0, 0.0, 0.0]])
+        particle_dipoles = np.array([[1.0, 0.0, 0.0]])*1e-2
         k_magnitude = self.ref_k
         
         # Sample points on a sphere of radius R
@@ -125,3 +125,66 @@ class TestScatteringFieldComputation:
         factor = (k_magnitude_2 / k_magnitude_1)**2*exp(1j * (k_magnitude_2 - k_magnitude_1) * R)
         
         assert np.allclose(scattering_field_2, factor * scattering_field_1, rtol=1e-4), "Scattering field does not scale correctly with wave number."
+
+
+class TestEffDipoleComputation:
+    
+    ref_k = 2 * np.pi  # Reference wave number for testing
+    
+    def test_single_dipole_effective(self):
+        # Test with a single dipole at the origin
+        particle_positions = np.array([[0.0, 0.0, 0.0]])
+        particle_dipoles = np.array([[1.0, 0.0, 0.0]])
+        k_magnitude = self.ref_k
+        
+        effective_dipole, _ = obtain_effective_dipole(particle_positions, particle_dipoles, k_magnitude)
+        assert np.allclose(effective_dipole, particle_dipoles, atol=1e-4), "Effective dipole does not match original dipole for a single particle."
+    
+    def test_cluster_smaller_than_wavelength(self):
+        # Test with a cluster of dipoles within a distance much smaller than the wavelength
+        particle_positions = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 0.5, 0.0]])*1e-3  # Small cluster
+        particle_dipoles = np.array([[1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, -1.0, 0.0]])
+        k_magnitude = self.ref_k
+        
+        effective_dipole, _ = obtain_effective_dipole(particle_positions, particle_dipoles, k_magnitude)
+        
+        # The effective dipole should be close to the sum of the individual dipoles
+        expected_effective_dipole = np.sum(particle_dipoles, axis=0)
+        
+        assert np.allclose(effective_dipole, expected_effective_dipole, atol=1e-4), "Effective dipole does not match expected value for a small cluster."
+        
+    def test_quadrupole_zero(self):
+        # Test with a configuration that should produce a quadrupole moment
+        particle_positions = np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])*1e-4  # Small separation
+        particle_dipoles = np.array([[0.0, 1.0, 0.0], [0.0, -1.0, 0.0]])
+        k_magnitude = self.ref_k
+        
+        effective_dipole, _ = obtain_effective_dipole(particle_positions, particle_dipoles, k_magnitude)
+        # The effective dipole should be small due to cancellation
+        assert np.allclose(effective_dipole, np.zeros_like(effective_dipole)), "Effective dipole is not close to zero for a quadrupole configuration."  
+        
+    def test_linearity_of_effective_dipole(self):
+        # Test that the effective dipole scales linearly with the input dipoles
+        particle_positions = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])*1e-3
+        particle_dipoles_1 = np.array([[1.0, 0.0, 0.0], [1.0, 1.0, 0.0]])
+        particle_dipoles_2 = 2 * particle_dipoles_1
+        k_magnitude = self.ref_k
+        
+        effective_dipole_1, _ = obtain_effective_dipole(particle_positions, particle_dipoles_1, k_magnitude)
+        effective_dipole_2, _ = obtain_effective_dipole(particle_positions, particle_dipoles_2, k_magnitude)
+        
+        assert np.allclose(effective_dipole_2, 2 * effective_dipole_1), "Effective dipole does not scale linearly with input dipoles."
+    
+    def test_nsample_convergence(self):
+        # Test that increasing n_Sample does not significantly change the effective dipole
+        particle_positions = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])*1e-3
+        particle_dipoles = np.array([[1.0, 0.0, 0.0], [1.0, 1.0, 0.0]])
+        k_magnitude = self.ref_k
+        
+        effective_dipole_ref_sample, _ = obtain_effective_dipole(particle_positions, particle_dipoles, k_magnitude)
+        effective_dipole_high_sample, _ = obtain_effective_dipole(particle_positions, particle_dipoles, k_magnitude, n_Sample=10000)
+        print("Effective dipole with default n_Sample:", effective_dipole_ref_sample)
+        print("Effective dipole with increased n_Sample:", effective_dipole_high_sample)
+        
+        assert np.allclose(effective_dipole_ref_sample, effective_dipole_high_sample, rtol=1e-2, atol=1e-6), "Effective dipole changes significantly with increased n_Sample"
+        
