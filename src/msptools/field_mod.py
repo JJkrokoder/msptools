@@ -58,7 +58,7 @@ class Field(ABC):
     
     __rmul__ = __mul__
     
-    def translate(self, displacement: ArrayLike) -> Field:
+    def translate(self, displacement: ArrayLike):
         return TranslatedField(self, displacement).simplify()    
     
     def __neg__(self):
