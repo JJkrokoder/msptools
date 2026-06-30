@@ -39,8 +39,6 @@ class Field(ABC):
         ----------
         positions :
             The positions at which to evaluate the external field gradient. Asumed to be in nanometers (nm).
-        medium_permittivity :
-            The permittivity of the medium.
 
         Returns
         -------
@@ -48,8 +46,25 @@ class Field(ABC):
             The external electric field gradient at the specified positions.
         """
         pass
-
     
+    def eval_complex_field_grad(self, positions: ArrayLike) -> ArrayLike:
+        """
+        Evaluate the complex field-gradient term ∇E* · E at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The positions at which to evaluate the complex field-gradient term. Asumed to be in nanometers (nm).
+
+        Returns
+        -------
+        ArrayLike
+            The complex field-gradient term at the specified positions.
+        """
+        E = self.evaluate(positions)
+        grad_E = self.evaluate_gradient(positions)
+        return np.einsum('...ij,...j->...i', np.conjugate(grad_E), E)
+
     def __add__(self, other):
         return SumField((self, other)).simplify()
     

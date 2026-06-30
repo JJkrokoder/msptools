@@ -65,12 +65,38 @@ class Test_Plane_Wave_Field():
         computed_gradient = field.evaluate_gradient(positions_nm)
 
         assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
+        
+    def test_plane_wave_field_complex_fieldgradient(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
 
+        field = msp.PlaneWaveField(direction=direction,
+                                   amplitude=amplitude,
+                                   polarization=polarization,
+                                   medium_wavelength_nm=wavelength)
+        
+        positions_nm = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        computed_FieldGradient = field.eval_complex_field_grad(positions_nm)
+        
+        k_vec = 2 * np.pi / wavelength * direction
+        n_positions = positions_nm.shape[0]
+        intensity = np.abs(amplitude)**2
+        expected_FieldGradient = np.tile(-1j * k_vec, (n_positions, 1)) * intensity
+        print("Computed Field Gradient:", computed_FieldGradient)
+        print("Expected Field Gradient:", expected_FieldGradient)
+        
+        assert np.allclose(computed_FieldGradient, expected_FieldGradient), f"Expected {expected_FieldGradient}, got {computed_FieldGradient}"
+        
 class Test_Standing_Wave_Field():
 
     def test_initialize_standing_wave_field(self):
         direction = np.array([0, 1, 1])
-        amplitude = 1.0
+        amplitude = 1.5
         polarization = np.array([1.2, 0.0, 0.0])
         wavelength = 500.0  # nm
 
@@ -83,6 +109,80 @@ class Test_Standing_Wave_Field():
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
+    
+    def test_standing_wave_field_external_function(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+
+        field = msp.StandingWaveField(direction=direction,
+                                      amplitude=amplitude,
+                                      polarization=polarization,
+                                      medium_wavelength_nm=wavelength)
+        
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        k_vec = 2 * np.pi / wavelength * direction
+        
+        phase_factor = np.cos(np.dot(positions, k_vec))
+        expected_field = amplitude * np.outer(phase_factor, polarization)
+        
+        computed_field = field.evaluate(positions)
+
+        assert np.allclose(computed_field, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_field}"
+
+    def test_standing_wave_field_gradient(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+
+        field = msp.StandingWaveField(direction=direction,
+                                      amplitude=amplitude,
+                                      polarization=polarization,
+                                      medium_wavelength_nm=wavelength)
+        
+        positions_nm = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        k_vec = 2 * np.pi / wavelength * direction
+        phase_factor = -np.sin(np.dot(positions_nm, k_vec))
+        expected_gradient = amplitude * np.einsum('ij,k -> ikj', np.outer(phase_factor, polarization), k_vec)
+        computed_gradient = field.evaluate_gradient(positions_nm)
+
+        assert np.allclose(computed_gradient, expected_gradient, atol=1e-4), f"Expected {expected_gradient}, got {computed_gradient}"
+    
+    def test_standing_wave_field_complex_fieldgradient(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+
+        field = msp.StandingWaveField(direction=direction,
+                                      amplitude=amplitude,
+                                      polarization=polarization,
+                                      medium_wavelength_nm=wavelength)
+        
+        positions_nm = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        computed_FieldGradient = field.eval_complex_field_grad(positions_nm)
+        
+        k_vec = 2 * np.pi / wavelength * direction
+        intensity = np.abs(amplitude)**2
+        phase_factor = np.sin(np.dot(positions_nm, -2*k_vec))
+        expected_FieldGradient =0.5*intensity * np.outer(phase_factor, k_vec)
+        
+        print("Computed Field Gradient:", computed_FieldGradient)
+        print("Expected Field Gradient:", expected_FieldGradient)
+        
+        assert np.allclose(computed_FieldGradient, expected_FieldGradient), f"Expected {expected_FieldGradient}, got {computed_FieldGradient}"
+    
 
 class Test_Sum_Field():
 
