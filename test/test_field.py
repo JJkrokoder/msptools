@@ -266,6 +266,25 @@ class Test_Scaled_Field():
         computed_scaled_eval = scaled_field.evaluate(position)
         assert np.allclose(computed_scaled_eval, expected_scaled_eval, atol=1e-4), f"Expected {expected_scaled_eval}, got {computed_scaled_eval}"    
 
+class Test_Traslated_Field():
+    
+    medium_permittivity = 1.2
+    displacement = np.array([10.0, 20.0, 30.0])
+    
+    PW_field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                amplitude=1.0,
+                                polarization=np.array([1.0, 0.0, 0.0]),
+                                medium_wavelength_nm=500.0)
+    
+    def test_translated_field_evaluation(self):
+        
+        translated_field = self.PW_field.translate(self.displacement)
+        
+        position = np.array([[100.0, 100.0, 100.0]])
+        original_eval = self.PW_field.evaluate(position - self.displacement)
+        expected_translated_eval = original_eval
+        computed_translated_eval = translated_field.evaluate(position)
+        assert np.allclose(computed_translated_eval, expected_translated_eval, atol=1e-4), f"Expected {expected_translated_eval}, got {computed_translated_eval}"
 
 def test_distributive_property_of_sum_and_scalar_multiplication():
     
