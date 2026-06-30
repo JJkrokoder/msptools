@@ -71,6 +71,39 @@ def plane_wave_gradient(direction: ArrayLike,
     gradient = xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), 1j*amplitude_vec)
     return gradient
 
+def plane_wave_double_gradient(direction: ArrayLike,
+                               amplitude_vec: ArrayLike,
+                               positions: ArrayLike,
+                               k_magnitude: float) -> ArrayLike:
+    """
+    Calculate the double gradient of the electric field of a plane wave at given positions.
+
+    Parameters
+    ----------
+    direction :
+        The propagation direction of the plane wave as a 3-element list or array.
+        It is assumed to be normalized.
+    amplitude :
+        The amplitude vector of the plane wave.
+    positions :
+        The positions at which to evaluate the field double gradient.
+    k_magnitude :
+        The magnitude of the wave vector.
+        
+    Returns
+    -------
+    np.ndarray
+        The double gradient of the electric field at specified positions.
+    """
+    
+    xp = get_backend(positions)
+    k_vector = direction * k_magnitude
+    phase_factors = xp.exp(xp.dot(positions, k_vector) * 1j)
+    outer_k = xp.outer(k_vector, k_vector)
+    double_gradient = xp.einsum('ij, k, l -> ijkl', outer_k, amplitude_vec, phase_factors)
+    return double_gradient
+    
+
 def gaussian_paraxial_function(direction: ArrayLike,
                               amplitude_vec: ArrayLike,
                               positions: ArrayLike,
@@ -168,3 +201,32 @@ def standing_wave_gradient(direction: ArrayLike,
     phase_factors = -xp.sin(positions @ k_vector)
     gradient = xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), amplitude_vec)
     return gradient
+
+def standing_wave_double_gradient(direction: ArrayLike,
+                                  amplitude_vec: ArrayLike,
+                                  positions: ArrayLike,
+                                  k_magnitude: float) -> ArrayLike:
+    """
+    Calculate the double gradient of the electric field of a standing wave at given positions.
+
+    Parameters
+    ----------
+    amplitude :
+        The amplitude vector of the standing wave.
+    positions :
+        The positions at which to evaluate the field double gradient.
+    k_magnitude :
+        The magnitude of the wave vector.
+        
+    Returns
+    -------
+    np.ndarray
+        The double gradient of the electric field at specified positions.
+    """
+    
+    xp = get_backend(positions)
+    k_vector = direction * k_magnitude
+    phase_factors = -xp.cos(xp.dot(positions, k_vector))
+    outer_k = xp.outer(k_vector, k_vector)
+    double_gradient = xp.einsum('ij, k, l -> ijkl', outer_k, amplitude_vec, phase_factors)
+    return double_gradient

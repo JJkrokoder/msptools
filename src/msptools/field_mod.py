@@ -46,7 +46,24 @@ class Field(ABC):
             The external electric field gradient at the specified positions.
         """
         pass
-    
+
+    @abstractmethod
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        """
+        Abstract method to get the external electric field double gradient at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The positions at which to evaluate the external field double gradient. Asumed to be in nanometers (nm).
+
+        Returns
+        -------
+        ArrayLike
+            The external electric field double gradient at the specified positions.
+        """
+        pass
+
     def eval_complex_field_grad(self, positions: ArrayLike) -> ArrayLike:
         """
         Evaluate the complex field-gradient term ∇E* · E at specified positions.
@@ -118,6 +135,14 @@ class PlaneWaveField(Field):
             positions=positions, 
             k_magnitude=pi*2/self.medium_wavelength_nm
         )
+        
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return plane_wave_double_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=pi*2/self.medium_wavelength_nm
+        )
     
     def translate(self, displacement: ArrayLike) -> Field:
         xp = get_backend(self.direction)
@@ -156,6 +181,14 @@ class StandingWaveField(Field):
     def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
         
         return standing_wave_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=pi*2/self.medium_wavelength_nm
+        )
+    
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return standing_wave_double_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
@@ -200,6 +233,12 @@ class SumField(Field):
         for field in self.fields:
             result += field.evaluate_gradient(positions)
         return result
+    
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        result = 0
+        for field in self.fields:
+            result += field.evaluate_double_gradient(positions)
+        return result
 
     def simplify(self) -> Field:
         
@@ -236,6 +275,9 @@ class ScaledField(Field):
 
     def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
         return self.scalar * self.field.evaluate_gradient(positions)
+    
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.scalar * self.field.evaluate_double_gradient(positions)
 
     def simplify(self) -> Field:
         if self.scalar == 1:
@@ -280,6 +322,9 @@ class TranslatedField(Field):
     
     def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
         return self.field.evaluate_gradient(positions - self.displacement)
+    
+    def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.field.evaluate_double_gradient(positions - self.displacement)
     
     def simplify(self) -> Field:
         if isinstance(self.field, TranslatedField):
