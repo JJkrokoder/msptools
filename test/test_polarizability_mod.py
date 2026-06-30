@@ -8,7 +8,8 @@ from msptools.polarizability_mod import (Core_Shell_Clausius_Mossotti,
                                             Mie_electric_dipole_polarizability,
                                             Aden_Kerker_core_shell_polarizability,
                                             compute_sphere_polarizability_DA,
-                                            Mie_electric_quadrupole_polarizability)
+                                            Mie_electric_quadrupole_polarizability,
+                                            Aden_Kerker_core_shell_quadrupole_polarizability)
 from msptools.tools.unit_calcs import nm_to_eV, frequency_to_wavenumber_nm
 from msptools.permittivity import permittivity_ridx
 
@@ -236,5 +237,60 @@ class Test_sphere_quadrupole_polarizability:
         computed_scaling = polarizabilities_quad / polarizabilities_quad[0]  # Normalize to first value
         
         assert np.allclose(computed_scaling, expected_scaling, rtol=1e-3), f"Expected scaling {expected_scaling}, got {computed_scaling}"
-        
+
+class Test_core_shell_quadrupole_polarizability:
     
+    medium_permittivity = 1.33**2
+    m1_test = 1.75/medium_permittivity**0.5
+    m2_test = 1.5/medium_permittivity**0.5
+    radius_core = 30
+    radius_shell = 50
+    
+    def test_core_shell_no_shell(self):
+        wavelengths_nm = 1000  # nm
+
+        polarizabilities_quad = Aden_Kerker_core_shell_quadrupole_polarizability(self.radius_core,
+                                                                       self.radius_core,
+                                                                       self.medium_permittivity,
+                                                                       self.m1_test**2*self.medium_permittivity,
+                                                                       self.m2_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        pol_shell_eq_medium = Aden_Kerker_core_shell_quadrupole_polarizability(self.radius_core,
+                                                                       self.radius_shell,
+                                                                       self.medium_permittivity,
+                                                                       self.m1_test**2*self.medium_permittivity,
+                                                                       self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        pol_only_core = Mie_electric_quadrupole_polarizability(self.radius_core,
+                                                                       self.medium_permittivity,
+                                                                       self.m1_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        assert np.isclose(polarizabilities_quad, pol_only_core, rtol=1e-3), f"Expected {pol_only_core}, got {polarizabilities_quad}"
+        assert np.isclose(pol_shell_eq_medium, pol_only_core, rtol=1e-3), f"Expected {pol_only_core}, got {pol_shell_eq_medium}"
+        
+    def test_core_shell_no_core(self):
+        wavelengths_nm = 1000  # nm
+
+        polarizabilities_quad = Aden_Kerker_core_shell_quadrupole_polarizability(1e-7,
+                                                                       self.radius_shell,
+                                                                       self.medium_permittivity,
+                                                                       self.m1_test**2*self.medium_permittivity,
+                                                                       self.m2_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        pol_core_eq_shell = Aden_Kerker_core_shell_quadrupole_polarizability(self.radius_core,
+                                                                       self.radius_shell,
+                                                                       self.medium_permittivity,
+                                                                       self.m2_test**2*self.medium_permittivity,
+                                                                       self.m2_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        pol_only_shell = Mie_electric_quadrupole_polarizability(self.radius_shell,
+                                                                       self.medium_permittivity,
+                                                                       self.m2_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        assert np.isclose(polarizabilities_quad, pol_only_shell, rtol=1e-3), f"Expected {pol_only_shell}, got {polarizabilities_quad}"
