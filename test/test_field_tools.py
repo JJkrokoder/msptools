@@ -121,3 +121,40 @@ class Test_Plane_Wave_Gradient():
         phase_shift = np.exp(1j * wave_number_nm * 50.0)
 
         assert np.allclose(grad2, grad1 * phase_shift, atol=1e-4), f"Expected phase-shifted gradients."
+    
+class Test_Standing_Wave_Function():
+
+    def test_standing_wave_function_analytical(self):
+        direction = np.array([0, 0, 1])
+        amplitude = np.array([1.0, 0.0, 0.0])
+        wave_number_nm = 2 * np.pi / 500  # Corresponds to 500 nm wavelength in vacuum
+        positions = np.array([[0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0],
+                              [0.0, 0.0, 150.0]])
+        
+        k_vec = wave_number_nm * direction
+        computed_field = msp.standing_wave_function(direction, amplitude, positions, wave_number_nm)
+        
+        expected_field = np.einsum('i,j->ji', amplitude, np.cos(np.einsum('ij,j->i', positions, k_vec)))
+
+        assert np.allclose(computed_field, expected_field), f"Expected {expected_field}, got {computed_field}"
+
+class Test_Standing_Wave_Gradient():
+
+    def test_standing_wave_gradient_analytical(self):
+        direction = np.array([0, 0, 1])
+        amplitude = np.array([1.0, 0.0, 0.0])
+        wave_number_nm = 2 * np.pi / 500  # Corresponds to 500 nm wavelength in vacuum
+        positions = np.array([[0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0],
+                              [0.0, 0.0, 150.0]])
+        
+        k_vec = wave_number_nm * direction
+        computed_gradient = msp.standing_wave_gradient(direction, amplitude, positions, wave_number_nm)
+        
+        phase_term = np.sin(np.einsum('ij,j->i', positions, k_vec))
+        direction_term = np.einsum('i,j->ij', -k_vec, amplitude)
+        expected_gradient = np.einsum('ij,k->kij', direction_term, phase_term)
+
+        assert np.allclose(computed_gradient, expected_gradient), f"Expected {expected_gradient}, got {computed_gradient}"
+        

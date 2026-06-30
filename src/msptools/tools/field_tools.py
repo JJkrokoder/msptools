@@ -166,5 +166,5 @@ def standing_wave_gradient(direction: ArrayLike,
     
     k_vector = direction * k_magnitude
     phase_factors = -xp.sin(positions @ k_vector)
-    gradient = 1j * xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), amplitude_vec)
+    gradient = xp.einsum('ij,k -> ijk',xp.outer(phase_factors, k_vector), amplitude_vec)
     return gradient
