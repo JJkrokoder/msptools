@@ -7,7 +7,8 @@ from msptools.polarizability_mod import (Core_Shell_Clausius_Mossotti,
                                             Mie_size_dipole_approximation,
                                             Mie_electric_dipole_polarizability,
                                             Aden_Kerker_core_shell_polarizability,
-                                            compute_sphere_polarizability_DA)
+                                            compute_sphere_polarizability_DA,
+                                            Mie_electric_quadrupole_polarizability)
 from msptools.tools.unit_calcs import nm_to_eV, frequency_to_wavenumber_nm
 from msptools.permittivity import permittivity_ridx
 
@@ -189,3 +190,51 @@ class Test_spher_pol_function:
         resonance_wavelength = wavelengths_nm[resonance_index]
         
         assert 500 < resonance_wavelength < 600, f"Expected plasmon resonance between 500-600 nm for Au, got {resonance_wavelength} nm"
+
+class Test_sphere_quadrupole_polarizability:
+    
+    medium_permittivity = 1.33**2
+    m_1_test = 1.5/medium_permittivity**0.5
+    radius_1 = 50
+    
+    def test_function_small_particle_limit(self):
+        radius_nm = np.array([1, 2, 3, 4, 5])  # nm
+        wavelengths_nm = 1000  # nm
+
+        polarizabilities_quad = Mie_electric_quadrupole_polarizability(radius_nm,
+                                                                       self.medium_permittivity,
+                                                                       self.m_1_test**2*self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        quad_pol_small = 8/3 * np.pi * radius_nm**5 * (self.m_1_test**2 - 1) / (2*self.m_1_test**2 + 3)
+        
+        assert np.allclose(polarizabilities_quad, quad_pol_small, rtol=1e-3), f"Expected {quad_pol_small}, got {polarizabilities_quad}"
+    
+    
+    def test_same_permittivity_no_polarizability(self):
+        wavelengths_nm = 1000  # nm
+
+        polarizabilities_quad = Mie_electric_quadrupole_polarizability(self.radius_1,
+                                                                       self.medium_permittivity,
+                                                                       self.medium_permittivity,
+                                                                       frequency_to_wavenumber_nm(nm_to_eV(wavelengths_nm)))
+        
+        assert np.isclose(polarizabilities_quad, 0), f"Expected 0 polarizability for same permittivity, got {polarizabilities_quad}"
+    
+    def test_k_scaling(self):
+        k_magnitudes = np.array([2 * np.pi / wl for wl in np.linspace(400, 800, 10)])*self.medium_permittivity**0.5
+        x_constant = 0.1
+        radii = x_constant / k_magnitudes  # Keep x constant
+
+        polarizabilities_quad = Mie_electric_quadrupole_polarizability(radii,
+                                                                       self.medium_permittivity,
+                                                                       self.m_1_test**2*self.medium_permittivity,
+                                                                       k_magnitudes)
+        
+        expected_scaling = (k_magnitudes[0]/k_magnitudes)**5
+        
+        computed_scaling = polarizabilities_quad / polarizabilities_quad[0]  # Normalize to first value
+        
+        assert np.allclose(computed_scaling, expected_scaling, rtol=1e-3), f"Expected scaling {expected_scaling}, got {computed_scaling}"
+        
+    

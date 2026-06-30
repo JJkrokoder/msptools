@@ -319,3 +319,40 @@ def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
     elif method == 'Clausius-Mossotti':
         polarizability = Core_Shell_Clausius_Mossotti(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell)
     return polarizability
+
+def Mie_electric_quadrupole_polarizability(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float) -> complex:
+    """
+    Calculate the electric quadrupole polarizability of a spherical particle using Mie theory.
+    
+    Parameters
+    ----------
+    radius : 
+        The radius of the spherical particle.
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity :
+        The permittivity of the particle material.
+    wave_number :
+        The wave number of the incident light (in vacuum).
+    
+    Returns
+    -------
+    complex
+        The electric quadrupole polarizability of the spherical particle using Mie theory.
+    Notes
+    -----
+    The electric quadrupole polarizability is derived from the second Mie coefficient (a2).
+    The formula is given by:
+    alpha_q = 40*pi/k_m^5*tE2
+    where k_m is the wave number in the medium and tE2 is the second Mie coefficient for the electric quadrupole.
+    - Wave number and radius should be in consistent units.
+    """
+    
+    k_m = wave_number * medium_permittivity**0.5
+    x = k_m * radius
+    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
+
+    tE2 = tE_n_coefficient(n=2, x_m=x, m=m)
+    alpha_q = 40 * pi / (k_m**5) * tE2
+    return alpha_q
+    
