@@ -81,6 +81,31 @@ class Field(ABC):
         E = self.evaluate(positions)
         grad_E = self.evaluate_gradient(positions)
         return np.einsum('...ij,...j->...i', np.conjugate(grad_E), E)
+    
+    def eval_curl(self, positions: ArrayLike) -> ArrayLike:
+        """
+        Evaluate the curl of the electric field at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The positions at which to evaluate the curl of the electric field. Asumed to be in nanometers (nm).
+        
+        Returns
+        -------
+        ArrayLike
+            The curl of the electric field at the specified positions.
+        """
+
+        grad_E = self.evaluate_gradient(positions)
+        xp = get_backend(grad_E)
+
+        curl_E = xp.empty_like(grad_E[..., 0, :])
+        curl_E[..., 0] = grad_E[..., 1, 2] - grad_E[..., 2, 1]
+        curl_E[..., 1] = grad_E[..., 2, 0] - grad_E[..., 0, 2]
+        curl_E[..., 2] = grad_E[..., 0, 1] - grad_E[..., 1, 0]
+
+        return curl_E
 
     def __add__(self, other):
         return SumField((self, other)).simplify()

@@ -308,3 +308,27 @@ def test_distributive_property_of_sum_and_scalar_multiplication():
     
     assert np.allclose(computed_scaled_sum, expected_scaled_sum_eval, atol=1e-4), f"Expected {expected_scaled_sum_eval}, got {computed_scaled_sum}"
 
+class Test_Curl():
+    
+    def test_curl_of_plane_wave_field(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+
+        field = msp.PlaneWaveField(direction=direction,
+                                   amplitude=amplitude,
+                                   polarization=polarization,
+                                   medium_wavelength_nm=wavelength)
+        
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        computed_curl = field.eval_curl(positions)
+        
+        k_vec = 2 * np.pi / wavelength * direction
+        expected_curl = np.cross(1j*k_vec, field.evaluate(positions))
+        
+        assert np.allclose(computed_curl, expected_curl, atol=1e-4), f"Expected {expected_curl}, got {computed_curl}"
+    
