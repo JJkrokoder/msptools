@@ -4,10 +4,27 @@ from .tools.unit_calcs import *
 from .tools.field_tools import *
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy.constants import pi
+from scipy.constants import pi, c
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+@dataclass(frozen=True)
+class MonochromaticData:
+    """Class representing the spectra data of an electromagnetic monochromatic field."""
+    
+    vacuum_wavelength_nm: float
+    medium_permittivity: float
+    
+    @property
+    def refractive_index(self):
+        return self.medium_permittivity**0.5
+    @property
+    def medium_wavelength_nm(self):
+        return self.vacuum_wavelength_nm / self.refractive_index
+    @property
+    def angular_frequency(self):
+        return 2 * pi * c / (self.vacuum_wavelength_nm * 1e-9)
+    
 
 class Field(ABC):
     """Class representing an electromagnetic field."""
@@ -128,28 +145,55 @@ class Field(ABC):
         return self
 
 @dataclass(frozen=True)
-class PlaneWaveField(Field):
+class MonochromaticField(Field):
+    """Class representing a monochromatic electromagnetic field."""
+    
+    vacuum_wavelength_nm : float
+    medium_permittivity : float
+    
+    @property
+    @abstractmethod
+    def monochromatic_data(self):
+        return MonochromaticData(
+            vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+            medium_permittivity=self.medium_permittivity
+        )
+
+    def evaluate_magnetic(self, positions):
+        curl = self.evaluate_curl(positions)
+        return curl / (1j * self.monochromatic_data.angular_frequency)
+
+@dataclass(frozen=True)
+class PlaneWaveField(MonochromaticField):
     """Class representing a plane wave electromagnetic field."""
     
     direction: ArrayLike
     amplitude: float | complex
     polarization: ArrayLike
-    medium_wavelength_nm : float
+    
+    @property
+    def monochromatic_data(self):
+        return MonochromaticData(
+            vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+            medium_permittivity=self.medium_permittivity
+        )
 
     def __post_init__(self) -> None:
         xp = get_backend(self.direction)
-
         object.__setattr__(self, "direction", self.direction / xp.linalg.norm(self.direction))
         object.__setattr__(self, "polarization", self.polarization / xp.linalg.norm(self.polarization))
-        object.__setattr__(self, "k_vector", 2 * pi * self.direction / self.medium_wavelength_nm)
-
+    
+    @property
+    def k_vector(self):
+        return (2 * pi / self.monochromatic_data.medium_wavelength_nm) * self.direction
+    
     def evaluate(self, positions: ArrayLike) -> ArrayLike:
         
         return plane_wave_function(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
     
     def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
@@ -158,7 +202,7 @@ class PlaneWaveField(Field):
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
         
     def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
@@ -166,7 +210,7 @@ class PlaneWaveField(Field):
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
     
     def translate(self, displacement: ArrayLike) -> Field:
@@ -176,17 +220,24 @@ class PlaneWaveField(Field):
             direction=self.direction,
             amplitude=self.amplitude * phase_shift,
             polarization=self.polarization,
-            medium_wavelength_nm=self.medium_wavelength_nm
+            vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+            medium_permittivity=self.medium_permittivity
         )
      
 @dataclass(frozen=True)   
-class StandingWaveField(Field):
+class StandingWaveField(MonochromaticField):
     """Class representing a standing wave electromagnetic field."""
     
     direction: ArrayLike
     amplitude: float | complex
     polarization: ArrayLike
-    medium_wavelength_nm : float
+    
+    @property
+    def monochromatic_data(self):
+        return MonochromaticData(
+            vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+            medium_permittivity=self.medium_permittivity
+        )
     
     def __post_init__(self) -> None:
         xp = get_backend(self.direction)
@@ -200,7 +251,7 @@ class StandingWaveField(Field):
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
 
     def evaluate_gradient(self, positions: ArrayLike) -> ArrayLike:
@@ -209,7 +260,7 @@ class StandingWaveField(Field):
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
     
     def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
@@ -217,7 +268,7 @@ class StandingWaveField(Field):
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
-            k_magnitude=pi*2/self.medium_wavelength_nm
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
 
 
@@ -225,27 +276,22 @@ class StandingWaveField(Field):
 class SumField(Field):
     """Class representing the sum of multiple electromagnetic fields."""
     
-    fields: Tuple[Field, ...]
+    fields: Tuple[Field, ...] 
     
     @property
-    def medium_wavelength_nm(self):
+    def monochromatic_data(self):
 
-        wavelengths = [
-            f.medium_wavelength_nm
-            for f in self.fields
-            if getattr(f, "medium_wavelength_nm", None) is not None
-        ]
+        data = [f.monochromatic_data for f in self.fields]
 
-        if not wavelengths:
+        if any(d is None for d in data):
             return None
 
-        first = wavelengths[0]
+        first = data[0]
 
-        if all(np.isclose(w, first) for w in wavelengths[1:]):
+        if all(d == first for d in data):
             return first
 
         return None
-            
 
     def evaluate(self, positions: ArrayLike) -> ArrayLike:
         result = 0
@@ -292,8 +338,8 @@ class ScaledField(Field):
     scalar: float | complex
     
     @property
-    def medium_wavelength_nm(self):
-        return self.field.medium_wavelength_nm
+    def monochromatic_data(self):
+        return self.field.monochromatic_data
 
     def evaluate(self, positions: ArrayLike) -> ArrayLike:
         return self.scalar * self.field.evaluate(positions)
@@ -314,14 +360,16 @@ class ScaledField(Field):
                 direction=self.field.direction,
                 amplitude=self.scalar * self.field.amplitude,
                 polarization=self.field.polarization,
-                medium_wavelength_nm=self.field.medium_wavelength_nm
+                vacuum_wavelength_nm=self.field.vacuum_wavelength_nm,
+                medium_permittivity=self.field.medium_permittivity
             )
         elif isinstance(self.field, StandingWaveField):
             return StandingWaveField(
                 direction=self.field.direction,
                 amplitude=self.scalar * self.field.amplitude,
                 polarization=self.field.polarization,
-                medium_wavelength_nm=self.field.medium_wavelength_nm
+                vacuum_wavelength_nm=self.field.vacuum_wavelength_nm,
+                medium_permittivity=self.field.medium_permittivity
             )
         elif isinstance(self.field, SumField):
             return SumField(tuple(ScaledField(f, self.scalar).simplify() for f in self.field.fields)).simplify()
@@ -337,6 +385,10 @@ class TranslatedField(Field):
     
     field: Field
     displacement: ArrayLike
+    
+    @property
+    def monochromatic_data(self):
+        return self.field.monochromatic_data
     
     @property
     def medium_wavelength_nm(self):

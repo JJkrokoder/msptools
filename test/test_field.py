@@ -3,6 +3,8 @@ import msptools as msp
 
 class Test_Plane_Wave_Field():
 
+    medium_permittivity = 1.7
+    
     def test_initialize_plane_wave_field(self):
         direction = np.array([0, 1, 1])
         amplitude = 1.0
@@ -12,9 +14,13 @@ class Test_Plane_Wave_Field():
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   medium_wavelength_nm=wavelength)
+                                   vacuum_wavelength_nm=wavelength,
+                                    medium_permittivity=self.medium_permittivity)
         
-        assert np.isclose(field.medium_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
+        
+        assert np.isclose(field.monochromatic_data.vacuum_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        assert np.isclose(field.monochromatic_data.medium_wavelength_nm, medium_wl), f"Field medium wavelength should be initialized to {medium_wl} nm"
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
@@ -24,11 +30,13 @@ class Test_Plane_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_permittivity = 1.0
 
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   medium_wavelength_nm=wavelength)
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=medium_permittivity)
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
@@ -47,17 +55,19 @@ class Test_Plane_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
 
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   medium_wavelength_nm=wavelength)
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=self.medium_permittivity)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 125.0],
                               [0.0, 0.0, 250.0]])
         
-        k_magnitude = 2 * np.pi / wavelength  # in nm^-1
+        k_magnitude = 2 * np.pi / medium_wl  # in nm^-1
         expected_gradient = 1j * k_magnitude * np.einsum('ij,k -> ijk',
                                                             np.outer(np.exp(1j*positions_nm[:, 2] * k_magnitude), np.array(direction)),
                                                             np.array(polarization))
@@ -71,11 +81,13 @@ class Test_Plane_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
 
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   medium_wavelength_nm=wavelength)
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=self.medium_permittivity)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],
@@ -83,7 +95,7 @@ class Test_Plane_Wave_Field():
         
         computed_FieldGradient = field.eval_complex_field_grad(positions_nm)
         
-        k_vec = 2 * np.pi / wavelength * direction
+        k_vec = 2 * np.pi / medium_wl * direction
         n_positions = positions_nm.shape[0]
         intensity = np.abs(amplitude)**2
         expected_FieldGradient = np.tile(-1j * k_vec, (n_positions, 1)) * intensity
@@ -94,18 +106,22 @@ class Test_Plane_Wave_Field():
         
 class Test_Standing_Wave_Field():
 
+    medium_permittivity = 1.7
+    
     def test_initialize_standing_wave_field(self):
         direction = np.array([0, 1, 1])
         amplitude = 1.5
         polarization = np.array([1.2, 0.0, 0.0])
         wavelength = 500.0  # nm
-
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
+        
         field = msp.StandingWaveField(direction=direction,
                                       amplitude=amplitude,
                                       polarization=polarization,
-                                      medium_wavelength_nm=wavelength)
+                                      vacuum_wavelength_nm=wavelength,
+                                      medium_permittivity=self.medium_permittivity)
         
-        assert np.isclose(field.medium_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
+        assert np.isclose(field.monochromatic_data.vacuum_wavelength_nm, wavelength), f"Field wavelength should be initialized to {wavelength} nm"
         assert np.allclose(field.direction, np.array(direction)/np.linalg.norm(direction)), "Field direction should be normalized"
         expected_amplitude_vec = amplitude * np.array(polarization) / np.linalg.norm(polarization)
         assert np.allclose(field.amplitude * field.polarization, expected_amplitude_vec), "Field amplitude vector should match expected value"
@@ -115,17 +131,19 @@ class Test_Standing_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
 
         field = msp.StandingWaveField(direction=direction,
                                       amplitude=amplitude,
                                       polarization=polarization,
-                                      medium_wavelength_nm=wavelength)
+                                      vacuum_wavelength_nm=wavelength,
+                                      medium_permittivity=self.medium_permittivity)
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],
                               [0.0, 0.0, 100.0]])
         
-        k_vec = 2 * np.pi / wavelength * direction
+        k_vec = 2 * np.pi / medium_wl * direction
         
         phase_factor = np.cos(np.dot(positions, k_vec))
         expected_field = amplitude * np.outer(phase_factor, polarization)
@@ -139,17 +157,19 @@ class Test_Standing_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
 
         field = msp.StandingWaveField(direction=direction,
                                       amplitude=amplitude,
                                       polarization=polarization,
-                                      medium_wavelength_nm=wavelength)
+                                      vacuum_wavelength_nm=wavelength,
+                                      medium_permittivity=self.medium_permittivity)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],
                               [0.0, 0.0, 100.0]])
         
-        k_vec = 2 * np.pi / wavelength * direction
+        k_vec = 2 * np.pi / medium_wl * direction
         phase_factor = -np.sin(np.dot(positions_nm, k_vec))
         expected_gradient = amplitude * np.einsum('ij,k -> ikj', np.outer(phase_factor, polarization), k_vec)
         computed_gradient = field.evaluate_gradient(positions_nm)
@@ -161,11 +181,13 @@ class Test_Standing_Wave_Field():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_wl = wavelength / np.sqrt(self.medium_permittivity)
 
         field = msp.StandingWaveField(direction=direction,
                                       amplitude=amplitude,
                                       polarization=polarization,
-                                      medium_wavelength_nm=wavelength)
+                                      vacuum_wavelength_nm=wavelength,
+                                      medium_permittivity=self.medium_permittivity)
         
         positions_nm = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],
@@ -173,7 +195,7 @@ class Test_Standing_Wave_Field():
         
         computed_FieldGradient = field.eval_complex_field_grad(positions_nm)
         
-        k_vec = 2 * np.pi / wavelength * direction
+        k_vec = 2 * np.pi / medium_wl * direction
         intensity = np.abs(amplitude)**2
         phase_factor = np.sin(np.dot(positions_nm, -2*k_vec))
         expected_FieldGradient =0.5*intensity * np.outer(phase_factor, k_vec)
@@ -186,17 +208,21 @@ class Test_Standing_Wave_Field():
 
 class Test_Sum_Field():
 
-    medium_permittivity = 1.2
+    medium_permittivity = 1.7
+    wavelength = 500.0  # nm
+    medium_wl = wavelength / np.sqrt(medium_permittivity)
     
     field1 = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                medium_wavelength_nm=500.0)
+                                vacuum_wavelength_nm=wavelength,
+                                medium_permittivity=medium_permittivity)
     
     field2 = msp.StandingWaveField(direction=np.array([0, 1, 0]),
                                 amplitude=0.5,
                                 polarization=np.array([0.0, 1.0, 0.0]),
-                                medium_wavelength_nm=600.0)
+                                vacuum_wavelength_nm=600.0,
+                                medium_permittivity=medium_permittivity)
     
     def test_sum_field_initialization(self):
         
@@ -223,7 +249,8 @@ class Test_Sum_Field():
         field3 = msp.PlaneWaveField(direction=np.array([1, 0, 0]),
                                 amplitude=0.3,
                                 polarization=np.array([0.0, 0.0, 1.0]),
-                                medium_wavelength_nm=700.0)
+                                vacuum_wavelength_nm=700.0,
+                                medium_permittivity=self.medium_permittivity)
         
         sum_field_1 = self.field1 + (self.field2 + field3)
         sum_field_2 = (self.field1 + self.field2) + field3
@@ -236,13 +263,16 @@ class Test_Sum_Field():
     
 class Test_Scaled_Field():
     
-    medium_permittivity = 1.2
+    medium_permittivity = 1.7
+    wavelength = 500.0  # nm
+    medium_wl = wavelength / np.sqrt(medium_permittivity)
     scalar = 2.5
     
     field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                medium_wavelength_nm=500.0)
+                                vacuum_wavelength_nm=wavelength,
+                                medium_permittivity=medium_permittivity)
     
     def test_scaled_field_simplify(self):
         
@@ -269,13 +299,16 @@ class Test_Scaled_Field():
 class Test_Traslated_Field():
     
     medium_permittivity = 1.2
+    wavelength = 500.0  # nm
+    medium_wl = wavelength / np.sqrt(medium_permittivity)
     displacement = np.array([10.0, 20.0, 30.0])
     
     PW_field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                medium_wavelength_nm=500.0)
-    
+                                vacuum_wavelength_nm=wavelength,
+                                medium_permittivity=medium_permittivity)
+
     def test_translated_field_evaluation(self):
         
         translated_field = self.PW_field.translate(self.displacement)
@@ -289,16 +322,21 @@ class Test_Traslated_Field():
 def test_distributive_property_of_sum_and_scalar_multiplication():
     
     scalar = 2.5
+    medium_permittivity = 1.7
+    wavelength = 500.0  # nm
+    medium_wl = wavelength / np.sqrt(medium_permittivity)
     
     field1 = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
                                 amplitude=1.0,
                                 polarization=np.array([1.0, 0.0, 0.0]),
-                                medium_wavelength_nm=500.0)
+                                vacuum_wavelength_nm=wavelength,
+                                medium_permittivity=medium_permittivity)
     
     field2 = msp.StandingWaveField(direction=np.array([0, 1, 0]),
                                 amplitude=0.5,
                                 polarization=np.array([0.0, 1.0, 0.0]),
-                                medium_wavelength_nm=600.0)
+                                vacuum_wavelength_nm=600.0,
+                                medium_permittivity=medium_permittivity)
     
     sum_field = field1 + field2
     scaled_sum_field = scalar * sum_field
@@ -315,11 +353,13 @@ class Test_Curl():
         amplitude = 1.0
         polarization = np.array([1.0, 0.0, 0.0])
         wavelength = 500.0  # nm
+        medium_permittivity = 1.0
 
         field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
-                                   medium_wavelength_nm=wavelength)
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=medium_permittivity)
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],

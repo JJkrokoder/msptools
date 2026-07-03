@@ -69,8 +69,8 @@ class System:
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles(self.xp)
-        self.medium_wave_number_nm = 2 * pi / self.field.medium_wavelength_nm
-        self.vacuum_wl_nm = self.field.medium_wavelength_nm * self.medium_permittivity**0.5
+        self.medium_wave_number_nm = 2 * pi / self.field.monochromatic_data.medium_wavelength_nm
+        self.vacuum_wl_nm = self.field.monochromatic_data.vacuum_wavelength_nm
         for ptype in self.particle_types:
             ptype.compute_polarizability(frequency = nm_to_eV(self.vacuum_wl_nm), medium_permittivity=self.medium_permittivity)
     

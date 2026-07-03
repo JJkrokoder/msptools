@@ -11,7 +11,11 @@ class TestSystem:
     medium_wavelength_nm = vacuum_wavelength_nm / medium_permittivity**0.5
     
     def test_initialize_system(self):
-        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]), medium_wavelength_nm=self.medium_wavelength_nm, amplitude= 1.0, polarization=np.array([1.0, 0.0, 0.0]))
+        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                   vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+                                   medium_permittivity=self.medium_permittivity,
+                                   amplitude= 1.0,
+                                   polarization=np.array([1.0, 0.0, 0.0]))
         type1 = msp.SphereType(radius=1.0, material="Au", radius_unit="nm")
         system = msp.System()
         system.set_system(field=field, medium_permittivity=self.medium_permittivity, particle_types=type1, positions_unit="nm")
@@ -21,7 +25,11 @@ class TestSystem:
         assert system.particle_types[0].radius == 1.0, "Particle type radius should be initialized to 1.0"
 
     def test_add_particles_single_type(self):
-        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]), medium_wavelength_nm=self.medium_wavelength_nm, amplitude= 1.0, polarization=np.array([1.0, 0.0, 0.0]))
+        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                   vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+                                   medium_permittivity=self.medium_permittivity,
+                                   amplitude= 1.0,
+                                   polarization=np.array([1.0, 0.0, 0.0]))
         type1 = msp.SphereType(radius=1.0, material="Au", radius_unit="nm")
         system = msp.System()
         system.set_system(field=field, medium_permittivity=self.medium_permittivity, particle_types=type1, positions_unit="nm")
@@ -32,7 +40,11 @@ class TestSystem:
         assert len(system.particles.positions) == 2, "There should be two particles in the system"
         
     def test_get_field_in_particles(self):
-        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]), medium_wavelength_nm=self.medium_wavelength_nm, amplitude= 1.0, polarization=np.array([1.0, 0.0, 0.0]))
+        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                   vacuum_wavelength_nm=self.vacuum_wavelength_nm,
+                                   medium_permittivity=self.medium_permittivity,
+                                   amplitude= 1.0,
+                                   polarization=np.array([1.0, 0.0, 0.0]))
         type1 = msp.SphereType(radius=1.0, material="Au", radius_unit="nm")
         system = msp.System()
         system.set_system(field=field, medium_permittivity=self.medium_permittivity, particle_types=type1, positions_unit="nm")
@@ -58,7 +70,11 @@ class TestExamples:
         eps_m = 1.77
         medium_wl = wavelength_nm / eps_m**0.5
         k_m = 2 * np.pi / medium_wl
-        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]), medium_wavelength_nm=medium_wl, amplitude= 1.0, polarization=np.array([1.0, 0.0, 0.0]))
+        field = msp.PlaneWaveField(direction=np.array([0, 0, 1]),
+                                   vacuum_wavelength_nm=wavelength_nm,
+                                   medium_permittivity=eps_m,
+                                   amplitude= 1.0,
+                                   polarization=np.array([1.0, 0.0, 0.0]))
         type1 = msp.SphereType(radius=100.0, material="Au", radius_unit="nm")
         system = msp.System() 
         system.set_system(field=field, medium_permittivity=eps_m, particle_types=type1, positions_unit="nm")
