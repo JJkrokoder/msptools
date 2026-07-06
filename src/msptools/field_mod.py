@@ -81,6 +81,10 @@ class Field(ABC):
         """
         pass
 
+    @property
+    def monochromatic_data(self):
+        return None
+
     def eval_complex_field_grad(self, positions: ArrayLike) -> ArrayLike:
         """
         Evaluate the complex field-gradient term ∇E* · E at specified positions.
@@ -143,32 +147,35 @@ class Field(ABC):
 
     def simplify(self):
         return self
-
-@dataclass(frozen=True)
-class MonochromaticField(Field):
-    """Class representing a monochromatic electromagnetic field."""
     
-    vacuum_wavelength_nm : float
-    medium_permittivity : float
-    
-    @property
-    @abstractmethod
-    def monochromatic_data(self):
-        return MonochromaticData(
-            vacuum_wavelength_nm=self.vacuum_wavelength_nm,
-            medium_permittivity=self.medium_permittivity
-        )
-
     def evaluate_magnetic(self, positions):
         curl = self.evaluate_curl(positions)
-        return curl / (1j * self.monochromatic_data.angular_frequency)
+        if self.monochromatic_data:
+            return curl / (1j * self.monochromatic_data.angular_frequency)
+        else:
+            raise ValueError("Monochromatic data is not available for this field.")
 
 @dataclass(frozen=True)
 class PlaneWaveSuperposition(Field):
     """Class representing a superposition of plane wave electromagnetic fields."""
     
-    k_vecs: ArrayLike
-    amp_vecs: ArrayLike
+    fields : Tuple[PlaneWaveField, ...]
+    
+    def __post_init__(self):
+        xp = get_backend(self.fields[0].direction)
+        k_vecs = xp.array([field.k_vector for field in self.fields])
+        amp_vecs = xp.array([field.amplitude * field.polarization for field in self.fields])
+        object.__setattr__(self, "k_vecs", k_vecs)
+        object.__setattr__(self, "amp_vecs", amp_vecs)
+        object.__setattr__(self, "cross_terms", xp.einsum('ij,ik->ijk', 1j*k_vecs, amp_vecs))
+        object.__setattr__(self, "double_cross_terms", xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', k_vecs, k_vecs), amp_vecs))
+        set_monochromatic_data = [field.monochromatic_data for field in self.fields]
+        object.__setattr__(self, "_monochromatic_data",
+                           set_monochromatic_data[0] if all(d == set_monochromatic_data[0] for d in set_monochromatic_data) else None)
+        
+    @property
+    def monochromatic_data(self):
+        return self._monochromatic_data
     
     def evaluate(self, positions):
         xp = get_backend(positions)
@@ -179,21 +186,24 @@ class PlaneWaveSuperposition(Field):
     def evaluate_gradient(self, positions):
         xp = get_backend(positions)
         phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
-        cross_term = xp.einsum('ij,ik->ijk', 1j*self.k_vecs, self.amp_vecs)
+        cross_term = self.cross_terms
         grad_sum = xp.einsum('ijk,...i->...jk', cross_term, xp.exp(1j * phases))
         return grad_sum
 
     def evaluate_double_gradient(self, positions):
         xp = get_backend(positions)
         phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
-        double_cross_term = xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', self.k_vecs, self.k_vecs), self.amp_vecs)
+        double_cross_term = self.double_cross_terms
         double_grad_sum = xp.einsum('ijkl,...i->...jkl', double_cross_term, xp.exp(1j * phases))
         return double_grad_sum
 
+
 @dataclass(frozen=True)
-class PlaneWaveField(MonochromaticField):
+class PlaneWaveField(Field):
     """Class representing a plane wave electromagnetic field."""
     
+    vacuum_wavelength_nm: float
+    medium_permittivity: float
     direction: ArrayLike
     amplitude: float | complex
     polarization: ArrayLike
@@ -252,9 +262,11 @@ class PlaneWaveField(MonochromaticField):
         )
      
 @dataclass(frozen=True)   
-class StandingWaveField(MonochromaticField):
+class StandingWaveField(Field):
     """Class representing a standing wave electromagnetic field."""
     
+    vacuum_wavelength_nm: float
+    medium_permittivity: float
     direction: ArrayLike
     amplitude: float | complex
     polarization: ArrayLike
@@ -352,10 +364,7 @@ class SumField(Field):
             return flat_terms[0]
         
         if all(isinstance(field, PlaneWaveField) for field in flat_terms):
-            xp = get_backend(flat_terms[0].direction)
-            k_vecs = xp.array([field.k_vector for field in flat_terms])
-            amp_vecs = xp.array([field.amplitude * field.polarization for field in flat_terms])
-            return PlaneWaveSuperposition(k_vecs=k_vecs, amp_vecs=amp_vecs)
+            return PlaneWaveSuperposition(tuple(flat_terms))
         
         return SumField(tuple(flat_terms))
     

@@ -383,14 +383,13 @@ class Test_Plane_Wave_Superposition():
         medium_wl = wavelength / np.sqrt(medium_permittivity)
         k_vec = 2 * np.pi / medium_wl * direction
 
-        superposition = msp.PlaneWaveSuperposition(k_vecs=np.array([k_vec]),
-                                                   amp_vecs=np.array([amplitude * polarization]))
-        
         pw_field = msp.PlaneWaveField(direction=direction,
                                    amplitude=amplitude,
                                    polarization=polarization,
                                    vacuum_wavelength_nm=wavelength,
                                    medium_permittivity=medium_permittivity)
+        
+        superposition = msp.PlaneWaveSuperposition(fields=(pw_field,))
         
         positions = np.array([[0.0, 0.0, 0.0],
                               [0.0, 0.0, 50.0],

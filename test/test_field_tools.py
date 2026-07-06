@@ -134,6 +134,21 @@ class Test_Plane_Wave_Double_Gradient():
         computed_double_gradient = msp.plane_wave_double_gradient(direction, amplitude, positions, wave_number_nm)
 
         assert computed_double_gradient.shape == (2, 3, 3, 3), f"Expected double gradient shape (2, 3, 3, 3), got {computed_double_gradient.shape}"
+    
+    def test_plane_Wave_double_gradient_analytical(self):
+        direction = np.array([0, 0, 1])
+        amplitude = np.array([1.0, 0.0, 0.0])
+        wave_number_nm = 2 * np.pi / 500  # Corresponds to 500 nm wavelength
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 125.0],
+                              [0.0, 0.0, 250.0]])
+        
+        k_vec = wave_number_nm * direction
+        computed_double_gradient = msp.plane_wave_double_gradient(direction, amplitude, positions, wave_number_nm)
+        
+        expected_double_gradient = -np.einsum('i,jk,l->ijkl', np.exp(1j * np.dot(positions, k_vec)), np.outer(k_vec, k_vec), amplitude)
+
+        assert np.allclose(computed_double_gradient, expected_double_gradient), f"Expected {expected_double_gradient}, got {computed_double_gradient}"
 
        
 class Test_Standing_Wave_Function():
