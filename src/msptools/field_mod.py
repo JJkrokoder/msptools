@@ -149,54 +149,11 @@ class Field(ABC):
         return self
     
     def evaluate_magnetic(self, positions):
-        curl = self.evaluate_curl(positions)
         if self.monochromatic_data:
+            curl = self.eval_curl(positions)
             return curl / (1j * self.monochromatic_data.angular_frequency)
         else:
             raise ValueError("Monochromatic data is not available for this field.")
-
-@dataclass(frozen=True)
-class PlaneWaveSuperposition(Field):
-    """Class representing a superposition of plane wave electromagnetic fields."""
-    
-    fields : Tuple[PlaneWaveField, ...]
-    
-    def __post_init__(self):
-        xp = get_backend(self.fields[0].direction)
-        k_vecs = xp.array([field.k_vector for field in self.fields])
-        amp_vecs = xp.array([field.amplitude * field.polarization for field in self.fields])
-        object.__setattr__(self, "k_vecs", k_vecs)
-        object.__setattr__(self, "amp_vecs", amp_vecs)
-        object.__setattr__(self, "cross_terms", xp.einsum('ij,ik->ijk', 1j*k_vecs, amp_vecs))
-        object.__setattr__(self, "double_cross_terms", xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', k_vecs, k_vecs), amp_vecs))
-        set_monochromatic_data = [field.monochromatic_data for field in self.fields]
-        object.__setattr__(self, "_monochromatic_data",
-                           set_monochromatic_data[0] if all(d == set_monochromatic_data[0] for d in set_monochromatic_data) else None)
-        
-    @property
-    def monochromatic_data(self):
-        return self._monochromatic_data
-    
-    def evaluate(self, positions):
-        xp = get_backend(positions)
-        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
-        field_sum = xp.einsum('ij,...i->...j', self.amp_vecs, xp.exp(1j * phases))
-        return field_sum
-    
-    def evaluate_gradient(self, positions):
-        xp = get_backend(positions)
-        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
-        cross_term = self.cross_terms
-        grad_sum = xp.einsum('ijk,...i->...jk', cross_term, xp.exp(1j * phases))
-        return grad_sum
-
-    def evaluate_double_gradient(self, positions):
-        xp = get_backend(positions)
-        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
-        double_cross_term = self.double_cross_terms
-        double_grad_sum = xp.einsum('ijkl,...i->...jkl', double_cross_term, xp.exp(1j * phases))
-        return double_grad_sum
-
 
 @dataclass(frozen=True)
 class PlaneWaveField(Field):
@@ -260,6 +217,13 @@ class PlaneWaveField(Field):
             vacuum_wavelength_nm=self.vacuum_wavelength_nm,
             medium_permittivity=self.medium_permittivity
         )
+    
+    def evaluate_magnetic(self, positions):
+        E_field = self.evaluate(positions)
+        k_vector = self.k_vector
+        xp = get_backend(E_field)
+        B_field = xp.cross(k_vector, E_field) / self.monochromatic_data.angular_frequency
+        return B_field
      
 @dataclass(frozen=True)   
 class StandingWaveField(Field):
@@ -368,10 +332,59 @@ class SumField(Field):
         
         return SumField(tuple(flat_terms))
     
+    def evaluate_magnetic(self, positions):
+        return sum(field.evaluate_magnetic(positions) for field in self.fields)
+    
     def translate(self, displacement: ArrayLike) -> Field:
         translated_fields = tuple(field.translate(displacement) for field in self.fields)
         return SumField(translated_fields).simplify()
+
+@dataclass(frozen=True)
+class PlaneWaveSuperposition(SumField):
+    """Class representing a superposition of plane wave electromagnetic fields."""
+    
+    fields : Tuple[PlaneWaveField, ...]
+    
+    def __post_init__(self):
+        xp = get_backend(self.fields[0].direction)
+        k_vecs = xp.array([field.k_vector for field in self.fields])
+        amp_vecs = xp.array([field.amplitude * field.polarization for field in self.fields])
+        object.__setattr__(self, "k_vecs", k_vecs)
+        object.__setattr__(self, "amp_vecs", amp_vecs)
+        object.__setattr__(self, "cross_terms", xp.einsum('ij,ik->ijk', 1j*k_vecs, amp_vecs))
+        object.__setattr__(self, "double_cross_terms", xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', k_vecs, k_vecs), amp_vecs))
+        set_monochromatic_data = [field.monochromatic_data for field in self.fields]
+        object.__setattr__(self, "_monochromatic_data",
+                           set_monochromatic_data[0] if all(d == set_monochromatic_data[0] for d in set_monochromatic_data) else None)
         
+    @property
+    def monochromatic_data(self):
+        return self._monochromatic_data
+    
+    def evaluate(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        field_sum = xp.einsum('ij,...i->...j', self.amp_vecs, xp.exp(1j * phases))
+        return field_sum
+    
+    def evaluate_gradient(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        cross_term = self.cross_terms
+        grad_sum = xp.einsum('ijk,...i->...jk', cross_term, xp.exp(1j * phases))
+        return grad_sum
+
+    def evaluate_double_gradient(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        double_cross_term = self.double_cross_terms
+        double_grad_sum = xp.einsum('ijkl,...i->...jkl', double_cross_term, xp.exp(1j * phases))
+        return double_grad_sum
+    
+    def evaluate_magnetic(self, positions):
+        return sum(field.evaluate_magnetic(positions) for field in self.fields)
+
+    
 @dataclass(frozen=True)
 class ScaledField(Field):
     """Class representing a scaled electromagnetic field."""

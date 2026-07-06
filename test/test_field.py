@@ -1,5 +1,6 @@
 import numpy as np
 import msptools as msp
+from scipy.constants import c
 
 class Test_Plane_Wave_Field():
 
@@ -399,5 +400,69 @@ class Test_Plane_Wave_Superposition():
         expected_field = pw_field.evaluate(positions)
         
         assert np.allclose(computed_superposition, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_superposition}"
+
+class Test_Magnetic_Field():
+    
+    def test_magnetic_field_of_plane_wave(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+        medium_permittivity = 1.3
+        medium_wl = wavelength / np.sqrt(medium_permittivity)
+        k_vec = 2 * np.pi / medium_wl * direction
+        omega = 2 * np.pi * c / (wavelength * 1e-9)  # Angular frequency in rad/s
+
+        pw_field = msp.PlaneWaveField(direction=direction,
+                                   amplitude=amplitude,
+                                   polarization=polarization,
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=medium_permittivity)
         
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
         
+        computed_magnetic_field = pw_field.evaluate_magnetic(positions)
+        
+        expected_magnetic_field = np.cross(k_vec, pw_field.evaluate(positions))/omega
+        
+        assert np.allclose(computed_magnetic_field, expected_magnetic_field, atol=1e-4), f"Expected {expected_magnetic_field}, got {computed_magnetic_field}"      
+    
+    def test_magnetic_field_of_superposition(self):
+        direction1 = np.array([0, 0, 1])
+        amplitude1 = 1.0
+        polarization1 = np.array([1.0, 0.0, 0.0])
+        wavelength1 = 500.0  # nm
+        
+        direction2 = np.array([1, 0, 0])
+        amplitude2 = 0.5
+        polarization2 = np.array([0.0, 1.0, 0.0])
+        wavelength2 = 600.0  # nm
+        
+        medium_permittivity = 1.3
+        
+        pw_field1 = msp.PlaneWaveField(direction=direction1,
+                                   amplitude=amplitude1,
+                                   polarization=polarization1,
+                                   vacuum_wavelength_nm=wavelength1,
+                                   medium_permittivity=medium_permittivity)
+        
+        pw_field2 = msp.PlaneWaveField(direction=direction2,
+                                   amplitude=amplitude2,
+                                   polarization=polarization2,
+                                   vacuum_wavelength_nm=wavelength2,
+                                   medium_permittivity=medium_permittivity)
+        
+        superposition = msp.PlaneWaveSuperposition(fields=(pw_field1, pw_field2))
+        
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [50.0, 50.0, 50.0],
+                              [100.0, 100.0, 100.0]])
+        
+        computed_magnetic_field_superposition = superposition.evaluate_magnetic(positions)
+        
+        expected_magnetic_field_superposition = (pw_field1.evaluate_magnetic(positions) + 
+                                                 pw_field2.evaluate_magnetic(positions))
+        
+        assert np.allclose(computed_magnetic_field_superposition, expected_magnetic_field_superposition, atol=1e-4), f"Expected {expected_magnetic_field_superposition}, got {computed_magnetic_field_superposition}"
