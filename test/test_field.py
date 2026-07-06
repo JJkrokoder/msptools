@@ -371,4 +371,34 @@ class Test_Curl():
         expected_curl = np.cross(1j*k_vec, field.evaluate(positions))
         
         assert np.allclose(computed_curl, expected_curl, atol=1e-4), f"Expected {expected_curl}, got {computed_curl}"
+
+class Test_Plane_Wave_Superposition():
     
+    def test_single_PW_superposition(self):
+        direction = np.array([0, 0, 1])
+        amplitude = 1.0
+        polarization = np.array([1.0, 0.0, 0.0])
+        wavelength = 500.0  # nm
+        medium_permittivity = 1.0
+        medium_wl = wavelength / np.sqrt(medium_permittivity)
+        k_vec = 2 * np.pi / medium_wl * direction
+
+        superposition = msp.PlaneWaveSuperposition(k_vecs=np.array([k_vec]),
+                                                   amp_vecs=np.array([amplitude * polarization]))
+        
+        pw_field = msp.PlaneWaveField(direction=direction,
+                                   amplitude=amplitude,
+                                   polarization=polarization,
+                                   vacuum_wavelength_nm=wavelength,
+                                   medium_permittivity=medium_permittivity)
+        
+        positions = np.array([[0.0, 0.0, 0.0],
+                              [0.0, 0.0, 50.0],
+                              [0.0, 0.0, 100.0]])
+        
+        computed_superposition = superposition.evaluate(positions)
+        expected_field = pw_field.evaluate(positions)
+        
+        assert np.allclose(computed_superposition, expected_field, atol=1e-4), f"Expected {expected_field}, got {computed_superposition}"
+        
+        

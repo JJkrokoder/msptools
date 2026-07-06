@@ -100,7 +100,7 @@ def plane_wave_double_gradient(direction: ArrayLike,
     k_vector = direction * k_magnitude
     phase_factors = xp.exp(xp.dot(positions, k_vector) * 1j)
     outer_k = xp.outer(k_vector, k_vector)
-    double_gradient = xp.einsum('i, jk, l -> ijkl', phase_factors, outer_k, amplitude_vec)
+    double_gradient = -xp.einsum('i, jk, l -> ijkl', phase_factors, outer_k, amplitude_vec)
     return double_gradient
     
 

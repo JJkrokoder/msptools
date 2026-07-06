@@ -164,6 +164,33 @@ class MonochromaticField(Field):
         return curl / (1j * self.monochromatic_data.angular_frequency)
 
 @dataclass(frozen=True)
+class PlaneWaveSuperposition(Field):
+    """Class representing a superposition of plane wave electromagnetic fields."""
+    
+    k_vecs: ArrayLike
+    amp_vecs: ArrayLike
+    
+    def evaluate(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        field_sum = xp.einsum('ij,...i->...j', self.amp_vecs, xp.exp(1j * phases))
+        return field_sum
+    
+    def evaluate_gradient(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        cross_term = xp.einsum('ij,ik->ijk', 1j*self.k_vecs, self.amp_vecs)
+        grad_sum = xp.einsum('ijk,...i->...jk', cross_term, xp.exp(1j * phases))
+        return grad_sum
+
+    def evaluate_double_gradient(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        double_cross_term = xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', self.k_vecs, self.k_vecs), self.amp_vecs)
+        double_grad_sum = xp.einsum('ijkl,...i->...jkl', double_cross_term, xp.exp(1j * phases))
+        return double_grad_sum
+
+@dataclass(frozen=True)
 class PlaneWaveField(MonochromaticField):
     """Class representing a plane wave electromagnetic field."""
     
@@ -323,6 +350,12 @@ class SumField(Field):
                 
         if len(flat_terms) == 1:
             return flat_terms[0]
+        
+        if all(isinstance(field, PlaneWaveField) for field in flat_terms):
+            xp = get_backend(flat_terms[0].direction)
+            k_vecs = xp.array([field.k_vector for field in flat_terms])
+            amp_vecs = xp.array([field.amplitude * field.polarization for field in flat_terms])
+            return PlaneWaveSuperposition(k_vecs=k_vecs, amp_vecs=amp_vecs)
         
         return SumField(tuple(flat_terms))
     
