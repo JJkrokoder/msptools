@@ -11,7 +11,7 @@ from msptools.polarizability_mod import (Core_Shell_Clausius_Mossotti,
                                             compute_sphere_polarizability)
 from msptools.tools.unit_calcs import nm_to_eV, frequency_to_wavenumber_nm
 from msptools.permittivity import permittivity_ridx
-
+import pytest
 
 def test_Clausius_Mossotti():
     radius = 0.08  # um
@@ -71,7 +71,9 @@ class Test_Core_Shell:
         
         assert np.isclose(alpha_ak, alpha_cm, rtol=1e-6), f"Expected {alpha_cm}, got {alpha_ak}"
     
-    def test_Aden_Kerker_pure_core_consistency(self):
+    @pytest.mark.parametrize("order", [1, 2])
+    @pytest.mark.parametrize("EM_Field", ["electric", "magnetic"])
+    def test_Aden_Kerker_pure_core_consistency(self, order, EM_Field):
         radius_core = 0.08  # um
         radius_shell = 0.08 # um, no shell
         wave_number = 2 * np.pi / 0.5
@@ -80,12 +82,15 @@ class Test_Core_Shell:
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
 
-        alpha_ak = Mie_core_shell_multipole_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number, order=1)
-        expected_alpha = Mie_multipole_polarizability(radius_core, medium_permittivity, particle_permittivity_core, wave_number, order=1)
+        alpha_ak = Mie_core_shell_multipole_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number, order=order, EM_field=EM_Field)
+        expected_alpha = Mie_multipole_polarizability(radius_core, medium_permittivity, particle_permittivity_core, wave_number, order=order, EM_field=EM_Field)
 
         assert np.isclose(alpha_ak, expected_alpha, rtol=1e-6), f"Expected {expected_alpha}, got {alpha_ak}"
     
-    def test_Aden_Kerker_pure_shell_consistency(self):
+    
+    @pytest.mark.parametrize("order", [1, 2])
+    @pytest.mark.parametrize("EM_Field", ["electric", "magnetic"])
+    def test_Aden_Kerker_pure_shell_consistency(self, order, EM_Field):
         radius_core = 1e-10  # um, no core
         radius_shell = 0.08 # um, no core
         wave_number = 2 * np.pi / 0.5
@@ -94,8 +99,8 @@ class Test_Core_Shell:
         particle_permittivity_core = self.e1  
         particle_permittivity_shell = self.e2  
 
-        alpha_ak = Mie_core_shell_multipole_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number, order=1)
-        expected_alpha = Mie_multipole_polarizability(radius_shell, medium_permittivity, particle_permittivity_shell, wave_number, order=1)
+        alpha_ak = Mie_core_shell_multipole_polarizability(radius_core, radius_shell, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number, order=order, EM_field=EM_Field)
+        expected_alpha = Mie_multipole_polarizability(radius_shell, medium_permittivity, particle_permittivity_shell, wave_number, order=order, EM_field=EM_Field)
 
         assert np.isclose(alpha_ak, expected_alpha, rtol=1e-6), f"Expected {expected_alpha}, got {alpha_ak}"   
     
