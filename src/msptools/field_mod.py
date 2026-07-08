@@ -81,6 +81,24 @@ class Field(ABC):
         """
         pass
 
+    @abstractmethod
+    def evaluate_triple_gradient(self, positions: ArrayLike) -> ArrayLike:
+        """
+        Abstract method to get the external electric field triple gradient at specified positions.
+
+        Parameters
+        ----------
+        positions :
+            The positions at which to evaluate the external field triple gradient. Asumed to be in nanometers (nm).
+        
+        Returns
+        -------
+        ArrayLike
+            The external electric field triple gradient at the specified positions.
+        """
+        pass
+    
+    
     @property
     def monochromatic_data(self):
         return None
@@ -154,6 +172,32 @@ class Field(ABC):
             return curl / (1j * self.monochromatic_data.angular_frequency)
         else:
             raise ValueError("Monochromatic data is not available for this field.")
+    
+    def evaluate_magnetic_gradient(self, positions):
+        if self.monochromatic_data:
+            Egg = self.evaluate_double_gradient(positions)
+            omega = self.monochromatic_data.angular_frequency
+            xp = get_backend(Egg)
+            gradB = xp.empty_like(Egg[..., 0, :, :])
+            gradB[..., :, 0] = (Egg[..., :, 1, 2] - Egg[..., :, 2, 1])
+            gradB[..., :, 1] = (Egg[..., :, 2, 0] - Egg[..., :, 0, 2])
+            gradB[..., :, 2] = (Egg[..., :, 0, 1] - Egg[..., :, 1, 0])
+            return gradB / (1j * omega)
+        else:
+            raise ValueError("Monochromatic data is not available for this field.")
+    
+    def evaluate_magnetic_double_gradient(self, positions):
+        if self.monochromatic_data:
+            Eggg = self.evaluate_triple_gradient(positions)
+            omega = self.monochromatic_data.angular_frequency
+            xp = get_backend(Eggg)
+            double_gradB = xp.empty_like(Eggg[..., 0, :, :, :])
+            double_gradB[..., :, :, 0] = (Eggg[..., :, :, 1, 2] - Eggg[..., :, :, 2, 1])
+            double_gradB[..., :, :, 1] = (Eggg[..., :, :, 2, 0] - Eggg[..., :, :, 0, 2])
+            double_gradB[..., :, :, 2] = (Eggg[..., :, :, 0, 1] - Eggg[..., :, :, 1, 0])
+            return double_gradB / (1j * omega)
+        else:
+            raise ValueError("Monochromatic data is not available for this field.")
 
 @dataclass(frozen=True)
 class PlaneWaveField(Field):
@@ -201,6 +245,14 @@ class PlaneWaveField(Field):
         
     def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
         return plane_wave_double_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
+        )
+        
+    def evaluate_triple_gradient(self, positions):
+        return plane_wave_triple_gradient(
             direction=self.direction,
             amplitude_vec=self.amplitude * self.polarization,
             positions=positions, 
@@ -273,6 +325,14 @@ class StandingWaveField(Field):
             positions=positions, 
             k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
         )
+        
+    def evaluate_triple_gradient(self, positions):
+        return standing_wave_triple_gradient(
+            direction=self.direction,
+            amplitude_vec=self.amplitude * self.polarization,
+            positions=positions, 
+            k_magnitude=pi*2/self.monochromatic_data.medium_wavelength_nm
+        )
 
 
 @dataclass(frozen=True)
@@ -312,6 +372,12 @@ class SumField(Field):
         result = 0
         for field in self.fields:
             result += field.evaluate_double_gradient(positions)
+        return result
+
+    def evaluate_triple_gradient(self, positions: ArrayLike) -> ArrayLike:
+        result = 0
+        for field in self.fields:
+            result += field.evaluate_triple_gradient(positions)
         return result
 
     def simplify(self) -> Field:
@@ -354,6 +420,9 @@ class PlaneWaveSuperposition(SumField):
         object.__setattr__(self, "cross_terms", xp.einsum('ij,ik->ijk', 1j*k_vecs, amp_vecs))
         object.__setattr__(self, "double_cross_terms", xp.einsum('ijk,il->ijkl', -xp.einsum('ij,ik->ijk', k_vecs, k_vecs), amp_vecs))
         set_monochromatic_data = [field.monochromatic_data for field in self.fields]
+        object.__setattr__(self, "triple_cross_terms", -1j*xp.einsum('ijkl,im->ijklm',
+                                      xp.einsum('ij,ikl->ijkl', k_vecs, xp.einsum('ij,ik->ijk', k_vecs, k_vecs)),
+                                        amp_vecs))
         object.__setattr__(self, "_monochromatic_data",
                            set_monochromatic_data[0] if all(d == set_monochromatic_data[0] for d in set_monochromatic_data) else None)
         
@@ -380,6 +449,13 @@ class PlaneWaveSuperposition(SumField):
         double_cross_term = self.double_cross_terms
         double_grad_sum = xp.einsum('ijkl,...i->...jkl', double_cross_term, xp.exp(1j * phases))
         return double_grad_sum
+
+    def evaluate_triple_gradient(self, positions):
+        xp = get_backend(positions)
+        phases = xp.einsum('ij,...j->...i', self.k_vecs, positions)
+        triple_cross_term = self.triple_cross_terms
+        triple_grad_sum = xp.einsum('ijklm,...i->...jklm', triple_cross_term, xp.exp(1j * phases))
+        return triple_grad_sum
     
     def evaluate_magnetic(self, positions):
         return sum(field.evaluate_magnetic(positions) for field in self.fields)
@@ -404,6 +480,9 @@ class ScaledField(Field):
     
     def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
         return self.scalar * self.field.evaluate_double_gradient(positions)
+    
+    def evaluate_triple_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.scalar * self.field.evaluate_triple_gradient(positions)
 
     def simplify(self) -> Field:
         if self.scalar == 1:
@@ -457,6 +536,9 @@ class TranslatedField(Field):
     
     def evaluate_double_gradient(self, positions: ArrayLike) -> ArrayLike:
         return self.field.evaluate_double_gradient(positions - self.displacement)
+    
+    def evaluate_triple_gradient(self, positions: ArrayLike) -> ArrayLike:
+        return self.field.evaluate_triple_gradient(positions - self.displacement)
     
     def simplify(self) -> Field:
         if isinstance(self.field, TranslatedField):
