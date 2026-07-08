@@ -1,14 +1,98 @@
 from .backend import get_backend
-from typing import Callable
 from scipy.constants import pi
 from numpy.typing import ArrayLike
 from .permittivity import permittivity_ridx
 from .tools.unit_calcs import nm_to_eV
-from .tools.mie_theory import tE_n_coefficient, hankel_plus, tEn_aden_kerker_coefficient
-from scipy.constants import c, e, h
+from .tools.mie_theory import (tE_n_coefficient,
+                               tEn_aden_kerker_coefficient,
+                               tM_n_coefficient,
+                               tMn_aden_kerker_coefficient)
 
-def select_computation_method(material: str, wavelength: float) -> Callable[[float, str], float]:
-    """Select the polarizability computation method based on the material and excitation wavelength."""  
+_MULTIPOLE_PREFACTOR = {1: 6 * pi, 2: 40 * pi}
+
+def Mie_multipole_polarizability(radius: float,
+                                 medium_permittivity: float,
+                                 particle_permittivity: float,
+                                 wave_number: float,
+                                 order: int = 1,
+                                 EM_field: str = 'electric') -> complex:
+
+    """
+    Calculate the multipole polarizability of a spherical particle using Mie theory.
+    
+    Parameters
+    ----------
+    radius : 
+        The radius of the spherical particle.
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity :
+        The permittivity of the particle material.
+    wave_number :
+        The wave number of the incident light (in vacuum).
+    order :
+        The order of the multipole expansion.
+    EM_field :
+        The type of electromagnetic field ('electric', 'magnetic').
+
+    Returns
+    -------
+    complex
+        The multipole polarizability of the spherical particle.
+    """
+    
+    k_m = wave_number * medium_permittivity**0.5
+    n = order
+    x = k_m * radius
+    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
+    tn_func = tE_n_coefficient if EM_field == 'electric' else tM_n_coefficient
+    t_n = tn_func(n, x, m)
+    return _MULTIPOLE_PREFACTOR[n] / (k_m**(2*n + 1)) * t_n
+
+def Mie_core_shell_multipole_polarizability(radius_core: float,
+                                           radius_shell: float,
+                                           medium_permittivity: float,
+                                           particle_permittivity_core: float,
+                                           particle_permittivity_shell: float,
+                                           wave_number: float,
+                                           order: int = 1,
+                                           EM_field: str = 'electric') -> complex:
+    """
+    Calculate the multipole polarizability of a core-shell spherical particle using Mie theory.
+
+    Parameters
+    ----------
+    radius_core : 
+        The radius of the core of the particle.
+    radius_shell :
+        The radius of the shell of the particle (including the core).
+    medium_permittivity :
+        The permittivity of the surrounding medium.
+    particle_permittivity_core :
+        The permittivity of the core material.
+    particle_permittivity_shell :
+        The permittivity of the shell material.
+    wave_number :
+        The wave number of the incident light (in vacuum).
+    order :
+        The order of the multipole expansion.
+    EM_field :
+        The type of electromagnetic field ('electric', 'magnetic').
+
+    Returns
+    -------
+    complex
+        The multipole polarizability of the core-shell particle.
+    """
+    
+    k_m = wave_number * medium_permittivity**0.5
+    n = order
+    x1, x2 = k_m * radius_core, k_m * radius_shell
+    m1 = (particle_permittivity_core**0.5) / (medium_permittivity**0.5)
+    m2 = (particle_permittivity_shell**0.5) / (medium_permittivity**0.5)
+    tn_func = tEn_aden_kerker_coefficient if EM_field == 'electric' else tMn_aden_kerker_coefficient
+    t_n = tn_func(n, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
+    return _MULTIPOLE_PREFACTOR[n] / (k_m**(2*n + 1)) * t_n
 
 def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float) -> float:
     """
@@ -79,7 +163,6 @@ def Core_Shell_Clausius_Mossotti(radius_core: float | ArrayLike,
 
     return prefactor * numerator / denominator
 
-
 def Mie_size_dipole_approximation(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float) -> complex:
     """
     Calculate the polarizability of a spherical particle using Mie size dipole approximation.
@@ -129,83 +212,6 @@ def Mie_size_dipole_approximation(radius: float, medium_permittivity: float, par
 
     return polarizability_mie
 
-def Mie_electric_dipole_polarizability(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float) -> complex:
-    """
-    Calculate the electric dipole polarizability of a spherical particle using Mie theory.
-    
-    Parameters
-    ----------
-    radius : 
-        The radius of the spherical particle.
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    particle_permittivity :
-        The permittivity of the particle material.
-    wave_number :
-        The wave number of the incident light (in vacuum).
-
-    Returns
-    -------
-    complex
-        The electric dipole polarizability of the spherical particle using Mie theory.
-    Notes
-    -----
-    The electric dipole polarizability is derived from the first Mie coefficient (a1).
-    The formula is given by:
-    alpha_e = 6*pi/k_m^3*tE1
-    where k_m is the wave number in the medium and tE1 is the first Mie coefficient for the electric dipole.
-    - Wave number and radius should be in consistent units.
-    """
-    k_m = wave_number * medium_permittivity**0.5
-    x = k_m * radius
-    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
-
-    tE1 = tE_n_coefficient(n=1, x_m=x, m=m)
-    alpha_e = 6 * pi / (k_m**3) * tE1
-    return alpha_e
-
-def Aden_Kerker_core_shell_polarizability(radius_core: float | ArrayLike, 
-                      radius_shell: float | ArrayLike, 
-                      medium_permittivity: complex | ArrayLike,
-                      particle_permittivity_core: complex | ArrayLike,
-                      particle_permittivity_shell: complex | ArrayLike,
-                      wave_number: complex | ArrayLike) -> complex | ArrayLike:
-    """
-    Calculate the electric dipole polarizability of a core-shell particle using the Aden-Kerker formulation of Mie theory.
-    
-    Parameters    
-    ----------
-    radius_core :
-        The radius of the core particle.
-    radius_shell :
-        The radius of the shell particle.
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    particle_permittivity_core :
-        The permittivity of the core material.
-    particle_permittivity_shell :
-        The permittivity of the shell material.
-    wave_number :
-        The wave number of the incident light (in vacuum).
-
-    Returns
-    -------
-    complex | ArrayLike
-        The electric dipole polarizability of the core-shell particle using the Aden-Kerker formulation of Mie theory.
-    """
-    
-    k_m = wave_number * medium_permittivity ** 0.5
-
-    x2 = k_m * radius_shell
-    x1 = k_m * radius_core
-    
-    m1 = (particle_permittivity_core**0.5) / (medium_permittivity**0.5)
-    m2 = (particle_permittivity_shell**0.5) / (medium_permittivity**0.5)
-
-    tE1 = tEn_aden_kerker_coefficient(n=1, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
-    
-    return 6 * pi / (k_m**3) * tE1
-
 def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, num_particles: int, dimensions: int, xp) -> ArrayLike:
     """
     Convert the polarizability from various input formats to a matrix form suitable for MSP calculations.
@@ -238,16 +244,36 @@ def polarizability_to_matrix(polarizability: ArrayLike | float | int | complex, 
 
     return polarizability
 
-def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
-                                     medium_permittivity: float,
-                                     particle_material: str,
-                                     wavelength_nm: float | ArrayLike,
-                                     method: str = 'Mie') -> complex|ArrayLike:
+_SPHERE_METHODS = {
+    ("electric", 1): {"Mie": lambda *a: Mie_multipole_polarizability(*a, order=1, EM_field="electric"),
+                       "Mie_SA": Mie_size_dipole_approximation,
+                       "Clausius-Mossotti": Clausius_Mossotti},
+    ("electric", 2): {"Mie": lambda *a: Mie_multipole_polarizability(*a, order=2, EM_field="electric")},
+    ("magnetic", 1): {"Mie": lambda *a: Mie_multipole_polarizability(*a, order=1, EM_field="magnetic")},
+    ("magnetic", 2): {"Mie": lambda *a: Mie_multipole_polarizability(*a, order=2, EM_field="magnetic")},
+}
+
+_CORE_SHELL_METHODS = {
+    ("electric", 1): {"Aden-Kerker": lambda *a: Mie_core_shell_multipole_polarizability(*a, order=1, EM_field="electric"),
+                       "Clausius-Mossotti": Core_Shell_Clausius_Mossotti},
+    ("electric", 2): {"Aden-Kerker": lambda *a: Mie_core_shell_multipole_polarizability(*a, order=2, EM_field="electric")},
+    ("magnetic", 1): {"Aden-Kerker": lambda *a: Mie_core_shell_multipole_polarizability(*a, order=1, EM_field="magnetic")},
+    ("magnetic", 2): {"Aden-Kerker": lambda *a: Mie_core_shell_multipole_polarizability(*a, order=2, EM_field="magnetic")},
+}
+
+def compute_sphere_polarizability(radius_nm: float | ArrayLike,
+                                  medium_permittivity: float,
+                                  particle_material: str,
+                                  wavelength_nm: float | ArrayLike,
+                                  order: int = 1,
+                                  EM_field: str = 'electric',
+                                  method: str = 'Mie') -> complex|ArrayLike:
     """
-    Compute the polarizability of a spherical particle using the Mie electric dipole formula.
+    Compute the multipole polarizability of a spherical particle.
     
     Parameters
     ----------
+    
     radius_nm :
         The radius of the spherical particle.
     medium_permittivity :
@@ -256,6 +282,10 @@ def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
         The material of the particle.
     wavelength_nm :
         The wavelength of the incident light in nanometers.
+    order :
+        The order of the multipole expansion.
+    EM_field :
+        The type of electromagnetic field (electric or magnetic).
     method :
         The method to compute the polarizability. 
         Options are 'Mie' for the full Mie solution, 'Mie_SA' for the size expansion approximation, or 'Clausius-Mossotti' for the quasistatic approximation.
@@ -263,30 +293,32 @@ def compute_sphere_polarizability_DA(radius_nm: float | ArrayLike,
     Returns
     -------
     complex|ArrayLike
-        The polarizability of the spherical particle using the Mie electric dipole formula.
+        The polarizability of the spherical particle using the Mie multipole formula.
     """
+    
     wave_number = 2 * pi / wavelength_nm
     frequency_eV =  nm_to_eV(wavelength_nm)
     particle_permittivity = permittivity_ridx(frequency_eV, particle_material)
-    if method == 'Mie':
-        polarizability = Mie_electric_dipole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
-    elif method == 'Mie_SA':
-        polarizability = Mie_size_dipole_approximation(radius_nm, medium_permittivity, particle_permittivity, wave_number)
-    elif method == 'Clausius-Mossotti':
-        polarizability = Clausius_Mossotti(radius_nm, medium_permittivity, particle_permittivity)
+    try:
+        polarizability_func = _SPHERE_METHODS[(EM_field, order)][method]
+    except KeyError:
+        valid_methods = _SPHERE_METHODS.get((EM_field, order), {})
+        raise ValueError(f"Invalid method '{method}' for {EM_field} multipole order {order}. Valid methods are: {list(valid_methods.keys())}")
     
-    return polarizability
+    return polarizability_func(radius_nm, medium_permittivity, particle_permittivity, wave_number)
 
-def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
-                                         radius_shell_nm: float | ArrayLike,
-                                         medium_permittivity: float,
-                                         material_core: str,
-                                         material_shell: str,
-                                         wavelength_nm: float | ArrayLike,
-                                         method: str = 'Aden-Kerker') -> complex|ArrayLike:
+def compute_core_shell_polarizability(radius_core_nm: float | ArrayLike,
+                                      radius_shell_nm: float | ArrayLike,
+                                      medium_permittivity: float,
+                                      material_core: str,
+                                      material_shell: str,
+                                      wavelength_nm: float | ArrayLike,
+                                      order: int = 1,
+                                      EM_field: str = 'electric',
+                                      method: str = 'Aden-Kerker') -> complex|ArrayLike:
     """
-    Compute the polarizability of a core-shell particle using the Mie electric dipole formula.
-    
+    Compute the multipole polarizability of a core-shell particle.
+
     Parameters
     ----------
     radius_core_nm :
@@ -301,184 +333,30 @@ def compute_core_shell_polarizability_DA(radius_core_nm: float | ArrayLike,
         The material of the shell of the particle.
     wavelength_nm :
         The wavelength of the incident light in nanometers.
-    method :
-        The method to compute the polarizability. Options are 'Aden-Kerker' for the full Mie solution for core-shell particles, or 'Clausius-Mossotti' for the quasistatic approximation. 
-        
-    Returns
-    -------
-    complex|ArrayLike
-        The polarizability of the core-shell particle using the Mie electric dipole formula.
-    """
-    
-    wave_number = 2 * pi / wavelength_nm
-    frequency_eV =  nm_to_eV(wavelength_nm)
-    particle_permittivity_core = permittivity_ridx(frequency_eV, material_core)
-    particle_permittivity_shell = permittivity_ridx(frequency_eV, material_shell)
-    if method == 'Aden-Kerker':
-        polarizability = Aden_Kerker_core_shell_polarizability(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number)
-    elif method == 'Clausius-Mossotti':
-        polarizability = Core_Shell_Clausius_Mossotti(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell)
-    return polarizability
-
-def Mie_electric_quadrupole_polarizability(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float) -> complex:
-    """
-    Calculate the electric quadrupole polarizability of a spherical particle using Mie theory.
-    
-    Parameters
-    ----------
-    radius : 
-        The radius of the spherical particle.
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    particle_permittivity :
-        The permittivity of the particle material.
-    wave_number :
-        The wave number of the incident light (in vacuum).
-    
-    Returns
-    -------
-    complex
-        The electric quadrupole polarizability of the spherical particle using Mie theory.
-    Notes
-    -----
-    The electric quadrupole polarizability is derived from the second Mie coefficient (a2).
-    The formula is given by:
-    alpha_q = 40*pi/k_m^5*tE2
-    where k_m is the wave number in the medium and tE2 is the second Mie coefficient for the electric quadrupole.
-    - Wave number and radius should be in consistent units.
-    """
-    
-    k_m = wave_number * medium_permittivity**0.5
-    x = k_m * radius
-    m = (particle_permittivity**0.5) / (medium_permittivity**0.5)
-
-    tE2 = tE_n_coefficient(n=2, x_m=x, m=m)
-    alpha_q = 40 * pi / (k_m**5) * tE2
-    return alpha_q
-
-def Aden_Kerker_core_shell_quadrupole_polarizability(radius_core: float | ArrayLike, 
-                      radius_shell: float | ArrayLike, 
-                      medium_permittivity: complex | ArrayLike,
-                      particle_permittivity_core: complex | ArrayLike,
-                      particle_permittivity_shell: complex | ArrayLike,
-                      wave_number: complex | ArrayLike) -> complex | ArrayLike:
-    """
-    Calculate the electric quadrupole polarizability of a core-shell particle using the Aden-Kerker formulation of Mie theory.
-    
-    Parameters    
-    ----------
-    radius_core :
-        The radius of the core particle.
-    radius_shell :
-        The radius of the shell particle.
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    particle_permittivity_core :
-        The permittivity of the core material.
-    particle_permittivity_shell :
-        The permittivity of the shell material.
-    wave_number :
-        The wave number of the incident light (in vacuum).
-    
-    Returns
-    -------
-    complex | ArrayLike
-        The electric quadrupole polarizability of the core-shell particle using the Aden-Kerker formulation of Mie theory.
-    """
-    
-    k_m = wave_number * medium_permittivity ** 0.5
-    
-    x2 = k_m * radius_shell
-    x1 = k_m * radius_core
-    
-    m1 = (particle_permittivity_core**0.5) / (medium_permittivity**0.5)
-    m2 = (particle_permittivity_shell**0.5) / (medium_permittivity**0.5)
-    
-    tE2 = tEn_aden_kerker_coefficient(n=2, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
-    
-    return 40 * pi / (k_m**5) * tE2
-
-def compute_sphere_polarizability_QA(radius_nm: float | ArrayLike,
-                                     medium_permittivity: float,
-                                     particle_material: str,
-                                     wavelength_nm: float | ArrayLike,
-                                     method: str = 'Mie') -> complex|ArrayLike:
-    """
-    Compute the quadrupole polarizability of a spherical particle using the Mie electric quadrupole formula.
-    
-    Parameters
-    ----------
-    radius_nm :
-        The radius of the spherical particle.
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    particle_material :
-        The material of the particle.
-    wavelength_nm :
-        The wavelength of the incident light in nanometers.
+    order :
+        The order of the multipole expansion.
+    EM_field :
+        The type of electromagnetic field (electric or magnetic).
     method :
         The method to compute the polarizability.
-        Options are 'Mie' for the full Mie solution.
-    
+        Options are 'Aden-Kerker' for the Aden-Kerker approximation or 'Clausius-Mossotti' for the quasistatic approximation.
+
     Returns
     -------
     complex|ArrayLike
-        The quadrupole polarizability of the spherical particle using the Mie electric quadrupole formula.
+        The polarizability of the core-shell particle using the specified method.
     """
-    
+
     wave_number = 2 * pi / wavelength_nm
     frequency_eV =  nm_to_eV(wavelength_nm)
-    particle_permittivity = permittivity_ridx(frequency_eV, particle_material)
-    if method == 'Mie':
-        polarizability = Mie_electric_quadrupole_polarizability(radius_nm, medium_permittivity, particle_permittivity, wave_number)
-    else:
-        raise ValueError("Invalid method for quadrupole polarizability. Only 'Mie' is supported.")
+    core_permittivity = permittivity_ridx(frequency_eV, material_core)
+    shell_permittivity = permittivity_ridx(frequency_eV, material_shell)
+    
+    try:
+        polarizability_func = _CORE_SHELL_METHODS[(EM_field, order)][method]
+    except KeyError:
+        valid_methods = _CORE_SHELL_METHODS.get((EM_field, order), {})
+        raise ValueError(f"Invalid method '{method}' for {EM_field} multipole order {order}. Valid methods are: {list(valid_methods.keys())}")
 
-    return polarizability
+    return polarizability_func(radius_core_nm, radius_shell_nm, medium_permittivity, core_permittivity, shell_permittivity, wave_number)
 
-def compute_core_shell_polarizability_QA(radius_core_nm: float | ArrayLike,
-                                         radius_shell_nm: float | ArrayLike,
-                                         medium_permittivity: float,
-                                         material_core: str,
-                                         material_shell: str,
-                                         wavelength_nm: float | ArrayLike,
-                                         method: str = 'Aden-Kerker') -> complex|ArrayLike:
-    """
-    Compute the quadrupole polarizability of a core-shell particle using the Mie electric quadrupole formula.
-    
-    Parameters
-    ----------
-    radius_core_nm :
-        The radius of the core of the particle in nanometers.
-    radius_shell_nm :
-        The radius of the shell of the particle in nanometers (including the core).
-    medium_permittivity :
-        The permittivity of the surrounding medium.
-    material_core :
-        The material of the core of the particle.
-    material_shell :
-        The material of the shell of the particle.
-    wavelength_nm :
-        The wavelength of the incident light in nanometers.
-    method :
-        The method to compute the polarizability. Options are 'Aden-Kerker' for the full Mie solution for core-shell particles.
-    
-    Returns
-    -------
-    complex|ArrayLike
-        The quadrupole polarizability of the core-shell particle using the Mie electric quadrupole formula.
-    """
-    
-    wave_number = 2 * pi / wavelength_nm
-    frequency_eV =  nm_to_eV(wavelength_nm)
-    particle_permittivity_core = permittivity_ridx(frequency_eV, material_core)
-    particle_permittivity_shell = permittivity_ridx(frequency_eV, material_shell)
-    if method == 'Aden-Kerker':
-        polarizability = Aden_Kerker_core_shell_quadrupole_polarizability(radius_core_nm, radius_shell_nm, medium_permittivity, particle_permittivity_core, particle_permittivity_shell, wave_number)
-    else:
-        raise ValueError("Invalid method for quadrupole polarizability. Only 'Aden-Kerker' is supported.")
-    return polarizability
- 
-        
-        
-        
