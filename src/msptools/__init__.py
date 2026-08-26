@@ -90,8 +90,7 @@ class System:
 
         if particle_type is None and len(self.particle_types) > 1:
             raise ValueError("When adding particles to a multi-type system, the 'particle_type' parameter must be specified.")
-        else:
-            particle_type = self.particle_types[0]
+        
 
         if particle_type is not None and particle_type not in self.particle_types:
             raise ValueError("The specified particle type is not part of the system's types.")

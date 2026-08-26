@@ -20,10 +20,13 @@ class SphereType(ParticleType):
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float, dim: int = 3) -> complex:
-        scalar_polarizability = compute_sphere_polarizability(radius_nm=self.radius,
-                                  medium_permittivity=medium_permittivity,
-                                  particle_material=self.material,
-                                  wavelength_nm=eV_to_nm(frequency))
+        if self.radius == 0.0:
+            scalar_polarizability = 0.0
+        else:
+            scalar_polarizability = compute_sphere_polarizability(radius_nm=self.radius,
+                                    medium_permittivity=medium_permittivity,
+                                    particle_material=self.material,
+                                    wavelength_nm=eV_to_nm(frequency))
         self.polarizability = scalar_polarizability
 
 class CoreShellType(ParticleType):
@@ -56,12 +59,15 @@ class CoreShellType(ParticleType):
 
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        scalar_polarizability = compute_core_shell_polarizability(radius_core_nm=self.radius_core,
-                                  radius_shell_nm=self.radius_shell,
-                                  medium_permittivity=medium_permittivity,
-                                  material_core=self.material_core,
-                                  material_shell=self.material_shell,
-                                  wavelength_nm=eV_to_nm(frequency))
+        if self.radius_shell == 0.0:
+            scalar_polarizability = 0.0
+        else:
+            scalar_polarizability = compute_core_shell_polarizability(radius_core_nm=self.radius_core,
+                                    radius_shell_nm=self.radius_shell,
+                                    medium_permittivity=medium_permittivity,
+                                    material_core=self.material_core,
+                                    material_shell=self.material_shell,
+                                    wavelength_nm=eV_to_nm(frequency))
                                   
         self.polarizability = scalar_polarizability
         
