@@ -94,7 +94,7 @@ def Mie_core_shell_multipole_polarizability(radius_core: float,
     t_n = tn_func(n, x_core=x1, x_shell=x2, m_1=m1, m_2=m2)
     return _MULTIPOLE_PREFACTOR[n] / (k_m**(2*n + 1)) * t_n
 
-def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float) -> float:
+def Clausius_Mossotti(radius: float, medium_permittivity: float, particle_permittivity: float, wave_number: float = None) -> float:
     """
     Calculate the polarizability of a spherical particle using the Clausius-Mossotti relation.
     
