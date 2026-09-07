@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "msptools"
-version = "0.2.1"
+version = "0.2.2"
 requires-python = ">=3.10"
 description = "Tools for Optical Forces Calculation in Multiple Scattering Problems"
 authors = [
