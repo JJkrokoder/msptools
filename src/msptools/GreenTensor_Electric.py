@@ -40,6 +40,7 @@ def G_0_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLik
 def G_1_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLike:
     """
     Computes the G_1 function for a given distance r and wave number.
+    G_1(r) = -exp(ikr)/(4*pi*r^3) * (1 + 3i/(kr) - 3/(kr)^2)
 
     Parameters
     ----------
@@ -240,7 +241,6 @@ def scattering_contraction(rel_vecs: ArrayLike,
     scattering_field = xp.sum(k**2*(term1 + term2), axis=1)  # sum over source particles
 
     return scattering_field
-
 
 def construct_green_tensor_from_rel_vecs(rel_vecs : np.ndarray, wave_number: float) -> np.ndarray:
     """

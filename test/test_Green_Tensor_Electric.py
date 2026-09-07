@@ -83,6 +83,24 @@ class Test_G_funtions:
         der_g1 = G_1_derivative_function(distance, self.wave_number)
         expected_der_g1 = -15 / (4 * np.pi * self.wave_number**2 * distance**6)
         assert np.allclose(der_g1, expected_der_g1, rtol=1e-5), "Derivative of G_1 function does not match near-field approximation."
+    
+    def test_numeric_G0_derivative(self):
+        distance = 1.1 / self.wave_number
+        h = 1e-8
+        der_g0_analytical = G_0_derivative_function(distance, self.wave_number)
+        g0_plus = G_0_function(distance + h, self.wave_number)
+        g0_minus = G_0_function(distance - h, self.wave_number)
+        der_g0_numerical = (g0_plus - g0_minus) / (2 * h)
+        assert np.allclose(der_g0_analytical, der_g0_numerical, atol=1e-5), "Analytical and numerical derivatives of G_0 do not match."
+
+    def test_numeric_G1_derivative(self):
+        distance = 1.1 / self.wave_number
+        h = 1e-8
+        der_g1_analytical = G_1_derivative_function(distance, self.wave_number)
+        g1_plus = G_1_function(distance + h, self.wave_number)
+        g1_minus = G_1_function(distance - h, self.wave_number)
+        der_g1_numerical = (g1_plus - g1_minus) / (2 * h)
+        assert np.allclose(der_g1_analytical, der_g1_numerical, atol=1e-5), "Analytical and numerical derivatives of G_1 do not match."
 
 class Test_PairWiseGreenTensor:
     

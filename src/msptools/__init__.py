@@ -34,7 +34,6 @@ class System:
     def __init__(self, device: str = "GPU") -> None:
         """Initialize a System object by specifying the device to use for calculations."""
         
-        print(f"Initializing System with device: {device}")
         if device not in ["GPU", "CPU"]:
             raise ValueError("Invalid device specified. Use 'GPU' or 'CPU'.")
         elif device == "GPU":
@@ -66,13 +65,13 @@ class System:
             particle_types = [particle_types]
         self.particle_types = particle_types
         self.field = field
-        self.field.set_medium_permittivity(medium_permittivity)
         self.medium_permittivity = medium_permittivity
         self.positions_unit = positions_unit
         self.particles = Particles(self.xp)
-        self.medium_wave_number_nm = frequency_to_wavenumber_nm(self.field.frequency_eV) * self.xp.sqrt(self.medium_permittivity)
+        self.medium_wave_number_nm = 2 * pi / self.field.monochromatic_data.medium_wavelength_nm
+        self.vacuum_wl_nm = self.field.monochromatic_data.vacuum_wavelength_nm
         for ptype in self.particle_types:
-            ptype.compute_polarizability(frequency = self.field.frequency_eV, medium_permittivity=self.medium_permittivity)
+            ptype.compute_polarizability(frequency = nm_to_eV(self.vacuum_wl_nm), medium_permittivity=self.medium_permittivity)
     
     def add_particles(self,
                      positions: ArrayLike,
@@ -90,8 +89,7 @@ class System:
 
         if particle_type is None and len(self.particle_types) > 1:
             raise ValueError("When adding particles to a multi-type system, the 'particle_type' parameter must be specified.")
-        else:
-            particle_type = self.particle_types[0]
+        
 
         if particle_type is not None and particle_type not in self.particle_types:
             raise ValueError("The specified particle type is not part of the system's types.")
@@ -103,7 +101,7 @@ class System:
         polarizability = polarizability_to_matrix(particle_type.polarizability, positions.shape[0], 3, self.xp)
         self.particles.add_particles(positions=positions, polarizabilities=polarizability)
     
-    def get_field_in_particles(self, method : str = 'Inverse') -> ArrayLike:
+    def get_field_in_particles(self, positions: ArrayLike, method : str = 'Inverse') -> ArrayLike:
         """
         Get the electric field at specified positions by solving the Multiple Scattering Problem (MSP).
 
@@ -113,8 +111,7 @@ class System:
             The electric field at the specified positions.
         """
         
-        positions = self.particles.positions
-        external_field = self.field.get_external_field_in_positions(positions)
+        external_field = self.field.evaluate(positions)
         field_solution = solve_MSP(polarizability=self.particles.polarizabilities,
                                    external_field=external_field,
                                    wave_number=self.medium_wave_number_nm,
@@ -122,7 +119,7 @@ class System:
                                    method=method)
         return field_solution
     
-    def get_field_gradient_in_particles(self, current_field: ArrayLike) -> ArrayLike:
+    def get_field_gradient_in_particles(self, current_field: ArrayLike, positions: ArrayLike) -> ArrayLike:
         """
         Get the electric field gradient at specified positions by solving the Multiple Scattering Problem (MSP) for the gradient.
 
@@ -132,8 +129,8 @@ class System:
             The electric field gradient at the specified positions.
         """
         
-        external_gradient = self.field.get_external_gradient_in_positions(self.particles.positions)
-        green_tensor_derivative = construct_green_tensor_gradient(self.particles.positions, self.medium_wave_number_nm)
+        external_gradient = self.field.evaluate_gradient(positions)
+        green_tensor_derivative = construct_green_tensor_gradient(positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
         gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
@@ -154,7 +151,7 @@ class System:
         position :
             The new position of the particle. This can be a 1D-three-element array-like.
         """
-        position = self.xp.array(position)* get_multiplier_nanometers(self.positions_unit)
+        position = self.xp.array(position) * get_multiplier_nanometers(self.positions_unit)
         if position.ndim != 1 or position.shape[0] != 3:
             raise ValueError("Position must be a 1D-three-element array-like.")
         self.particles.set_position(index, position.tolist())
@@ -170,7 +167,8 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self) -> ArrayLike:
+
+    def compute_forces(self, positions: ArrayLike, method: str = 'Inverse') -> ArrayLike:
         """
         Compute the optical forces on particles at specified positions.
 
@@ -180,8 +178,8 @@ class ForceCalculator:
             The computed optical forces on the particles.
         """
 
-        E_field = self.system.get_field_in_particles()
-        E_grad = self.system.get_field_gradient_in_particles(E_field)
+        E_field = self.system.get_field_in_particles(positions=positions, method=method)
+        E_grad = self.system.get_field_gradient_in_particles(current_field=E_field, positions=positions)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
 

@@ -1,6 +1,7 @@
 from .polarizability_mod import *
 from .tools.unit_calcs import *
 from .permittivity import permittivity_ridx
+from scipy.constants import pi
 
 class ParticleType:
     """Class representing a type of particle with specific properties."""
@@ -12,18 +13,33 @@ class ParticleType:
 class SphereType(ParticleType):
     """Class representing spherical particles."""
 
-    def __init__(self, material: str, radius: float, radius_unit: str, polarizability: complex = None) -> None:
+    def __init__(self, material: str,
+                 radius: float,
+                 radius_unit: str,
+                 polarizability: complex = None,
+                 tunable_permittivity: float = None) -> None:
         self.radius = radius
         self.radius_unit = radius_unit
         self.material = material
+        self.tunable_permittivity = tunable_permittivity
+        if material == "Tunable" and tunable_permittivity is None:
+            raise ValueError("For 'Tunable' material, 'tunable_permittivity' must be provided.")
         if polarizability is not None:
             self.compute_polarizability = lambda frequency, medium_permittivity: polarizability
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float, dim: int = 3) -> complex:
-        scalar_polarizability = Mie_electric_dipole_polarizability(radius=self.radius,
-                                  medium_permittivity=medium_permittivity,
-                                  particle_permittivity=permittivity_ridx(frequency, self.material),
-                                  wave_number=frequency_to_wavenumber_nm(frequency))
+        if self.radius == 0.0:
+            scalar_polarizability = 0.0
+        elif self.material == "Tunable":
+            scalar_polarizability = Mie_multipole_polarizability(radius=self.radius,
+                                    medium_permittivity=medium_permittivity,
+                                    particle_permittivity=self.tunable_permittivity,
+                                    wave_number=2*pi/eV_to_nm(frequency)) 
+        else:
+            scalar_polarizability = compute_sphere_polarizability(radius_nm=self.radius,
+                                    medium_permittivity=medium_permittivity,
+                                    particle_material=self.material,
+                                    wavelength_nm=eV_to_nm(frequency))
         self.polarizability = scalar_polarizability
 
 class CoreShellType(ParticleType):
@@ -56,11 +72,16 @@ class CoreShellType(ParticleType):
 
 
     def compute_polarizability(self, frequency: float, medium_permittivity: float) -> complex:
-        scalar_polarizability = Core_Shell_Clausius_Mossotti(radius_core=self.radius_core,
-                                  radius_shell=self.radius_shell,
-                                  medium_permittivity=medium_permittivity,
-                                  particle_permittivity_core=permittivity_ridx(frequency, self.material_core),
-                                  particle_permittivity_shell=permittivity_ridx(frequency, self.material_shell))
+        if self.radius_shell == 0.0:
+            scalar_polarizability = 0.0
+        else:
+            scalar_polarizability = compute_core_shell_polarizability(radius_core_nm=self.radius_core,
+                                    radius_shell_nm=self.radius_shell,
+                                    medium_permittivity=medium_permittivity,
+                                    material_core=self.material_core,
+                                    material_shell=self.material_shell,
+                                    wavelength_nm=eV_to_nm(frequency))
+                                  
         self.polarizability = scalar_polarizability
         
     
