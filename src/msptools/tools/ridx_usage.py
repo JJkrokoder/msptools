@@ -19,7 +19,7 @@ def obtain_ridx_material_info(material: str) -> tuple:
         "SiO2": ("main", "SiO2", "Franta"),
         "Ag": ("main", "Ag", "Johnson"),
         "Si": ("main", "Si", "Franta-25C"),
-        "TiO2": ("main", "TiO2", "Franta")
+        "TiO2": ("main", "TiO2", "Devore-o")
         # Add more materials as needed
     }
 

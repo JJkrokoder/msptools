@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from msptools.permittivity import permittivity_Drude, permittivity_ridx
+from msptools.tools.unit_calcs import nm_to_eV
 
 
 @pytest.mark.parametrize("frequency", [1e2, 1e3, 1e4, 1e5])
@@ -35,6 +36,13 @@ class Test_RidxPermittivity():
         expected_epsilon = -2.28 + 3.81j  # Known value for gold at 2.5 eV (Babar data)
         assert np.isclose(epsilon.real, expected_epsilon.real, rtol=1e-2), f"Expected real part {expected_epsilon.real}, got {epsilon.real}"
         assert np.isclose(epsilon.imag, expected_epsilon.imag, rtol=1e-2), f"Expected imaginary part {expected_epsilon.imag}, got {epsilon.imag}"
+    
+    def test_TiO2_o_at_1064nm(self):
+        frequency_ev = nm_to_eV(1064)  # Convert 1064 nm to eV
+        material = "TiO2"
+        epsilon = permittivity_ridx(frequency=frequency_ev, material=material)
+        expected_epsilon = 2.479**2  # Known value for TiO2 (o) at 1064 nm (Devore data)
+        assert np.isclose(epsilon.real, expected_epsilon, rtol=1e-2), f"Expected real part {expected_epsilon}, got {epsilon.real}"
     
     def test_find_gold_resonance_peak(self):
         material = "Au"
