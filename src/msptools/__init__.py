@@ -34,7 +34,6 @@ class System:
     def __init__(self, device: str = "GPU") -> None:
         """Initialize a System object by specifying the device to use for calculations."""
         
-        print(f"Initializing System with device: {device}")
         if device not in ["GPU", "CPU"]:
             raise ValueError("Invalid device specified. Use 'GPU' or 'CPU'.")
         elif device == "GPU":
@@ -168,7 +167,8 @@ class ForceCalculator:
         self.system = system
 
 
-    def compute_forces(self, positions: ArrayLike) -> ArrayLike:
+
+    def compute_forces(self, positions: ArrayLike, method: str = 'Inverse') -> ArrayLike:
         """
         Compute the optical forces on particles at specified positions.
 
@@ -178,7 +178,7 @@ class ForceCalculator:
             The computed optical forces on the particles.
         """
 
-        E_field = self.system.get_field_in_particles(positions=positions)
+        E_field = self.system.get_field_in_particles(positions=positions, method=method)
         E_grad = self.system.get_field_gradient_in_particles(current_field=E_field, positions=positions)
         dipole_moments = calculate_dipole_moments_linear(self.system.particles.polarizabilities, E_field)
         forces = calculate_forces_eppgrad(self.system.medium_permittivity, dipole_moments, E_grad)
