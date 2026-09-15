@@ -130,13 +130,12 @@ class System:
         """
         
         external_gradient = self.field.evaluate_gradient(positions)
-        green_tensor_derivative = construct_green_tensor_gradient(positions, self.medium_wave_number_nm)
         dipole_moments = calculate_dipole_moments_linear(self.particles.polarizabilities,
                                                          current_field) 
-        gradient_solution = MSP_gradient_from_arrays(dipole_moments=dipole_moments,
-                                                     external_gradient=external_gradient,
-                                                     wave_number=self.medium_wave_number_nm,
-                                                     green_tensor_derivative=green_tensor_derivative)
+        gradient_solution = MSP_gradient_from_positions(dipole_moments=dipole_moments,
+                                                        external_gradient=external_gradient,
+                                                        wave_number=self.medium_wave_number_nm,
+                                                        positions=positions)
         return gradient_solution
     
     def set_position(self, index: int, position: ArrayLike) -> None:
