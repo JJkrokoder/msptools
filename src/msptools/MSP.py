@@ -9,7 +9,9 @@ from msptools.GreenTensor_Electric import (construct_green_tensor,
                                            G_1_function,
                                            scattering_term,
                                            scattering_term_batched,
-                                           scat_green_field_from_rel_vecs_dipoles)
+                                           scat_green_field_from_rel_vecs_dipoles,
+                                           scattering_term_grad
+                                           )
 
 def solve_MSP(polarizability : ArrayLike,
               external_field : ArrayLike,
@@ -31,7 +33,7 @@ def solve_MSP(polarizability : ArrayLike,
     positions :
         Positions of the particles.
     method :
-        Method to solve the MSP, either 'GMRES', 'Iterative' or 'Inverse'. Default is 'GMRES'.
+        Method to solve the MSP, either 'GMRES', 'Iterative' or 'Inverse'.
     tolerance :
         Convergence relative tolerance for the iterative method. Default is 1e-6.
     
@@ -304,4 +306,39 @@ def MSP_gradient_from_arrays(dipole_moments: ArrayLike,
     
     MSP_gradient = external_gradient + scattered_gradient
 
+    return MSP_gradient
+
+def MSP_gradient_from_positions(dipole_moments: ArrayLike,
+                             external_gradient : ArrayLike,
+                             wave_number : float,
+                             positions : ArrayLike) -> ArrayLike:
+    """
+    Compute the gradient of the MSP solution with respect to particle positions.
+
+    Parameters
+    ----------
+    polarizability :
+        Polarizability of the particles.
+    MS_field :
+        Multiple scattering field on particles positions.
+    external_gradient :
+        Gradient of the external field on particles positions.
+    wave_number :
+        Wave number of the incident wave.
+    positions :
+        Positions of the particles.
+
+    Returns
+    -------
+    xp.ndarray
+        The gradient of the MSP solution with respect to particle positions.
+    
+    Notes
+    -----
+    The gradient is returned as an array of shape (N, d, d) where N is the number of particles and d is the dimensionality.
+    """
+    R_vec = positions[:, None, :] - positions[None, :, :] # shape (N, N, d)
+    scattered_gradient = scattering_term_grad(rel_vecs=R_vec, wave_number=wave_number, dipole_moments=dipole_moments)
+
+    MSP_gradient = external_gradient + scattered_gradient
     return MSP_gradient
