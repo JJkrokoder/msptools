@@ -4,6 +4,14 @@ import numpy as np
 from scipy.constants import pi
 from cmath import exp
 
+_EYE = None  # module-level cache, set once per backend
+
+def _get_eye3(xp, dimensions: int = 3) -> np.ndarray:
+    global _EYE
+    if _EYE is None or get_backend(_EYE) is not xp:
+        _EYE = xp.eye(dimensions)
+    return _EYE
+
 def G_0_function(r: float | ArrayLike, wave_number: float) -> complex | ArrayLike:
     """
     Computes the G_0 function for a given distance r and wave number.
@@ -126,7 +134,7 @@ def v_cross_derivative(r_vec: ArrayLike, coordinate: int) -> np.ndarray:
     Parameters
     ----------
     r_vec : 
-        The vector for which the derivative is computed.
+        The vector(s) for which the derivative is computed.
     coordinate : 
         The coordinate with respect to which the derivative is taken (0, 1, or 2).
 
@@ -137,18 +145,18 @@ def v_cross_derivative(r_vec: ArrayLike, coordinate: int) -> np.ndarray:
     """
     xp = get_backend(r_vec)
 
-    dimensions = r_vec.shape[0]
+    dimensions = r_vec.shape[-1]
     if coordinate < 0 or coordinate >= dimensions:
         raise ValueError("Coordinate must be in the range [0, {}]".format(dimensions - 1))
 
-    der_R_cross = xp.zeros((dimensions, dimensions))
+    der_R_cross = xp.zeros((*r_vec.shape[:-1], dimensions, dimensions))
 
     for i in range(dimensions):
         if i == coordinate:
-            der_R_cross[i, i] = 2 * r_vec[i]
+            der_R_cross[..., i, i] = 2 * r_vec[..., i]
         else:
-            der_R_cross[i, coordinate] = r_vec[i]
-            der_R_cross[coordinate, i] = r_vec[i]
+            der_R_cross[..., i, coordinate] = r_vec[..., i]
+            der_R_cross[..., coordinate, i] = r_vec[..., i]
 
     return der_R_cross
 
@@ -300,17 +308,14 @@ def pairwise_green_tensor(relative_positions : ArrayLike, wave_number: float) ->
         green_tensor = G_0_values[:, None, None] * Identity + G_1_values[:, None, None] * R_cross_values
     return green_tensor
 
-
-def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinate : int,  wave_number: float):
+def pair_green_tensor_derivative(rel_vec: np.ndarray, coordinate : int,  wave_number: float):
     """
     Constructs the derivative of the pair Green's tensor with respect to a specific coordinate.
 
     Parameters
     ----------
-    pos_i : np.ndarray
-        Position of the first particle.
-    pos_j : np.ndarray
-        Position of the second particle.
+    rel_vec : np.ndarray
+        Relative position vector between the two particles.
     coordinate : int
         The coordinate with respect to which the derivative is taken (0, 1, or 2).
     wave_number : float
@@ -321,18 +326,19 @@ def pair_green_tensor_derivative(pos_i: np.ndarray, pos_j: np.ndarray, coordinat
     np.ndarray
         Derivative of the pair Green's tensor with respect to the specified coordinate.
     """
-    xp = get_backend(pos_i)
-    dimensions = pos_i.shape[0]
-    R_vec = pos_i - pos_j
-    r = xp.linalg.norm(R_vec)
+    xp = get_backend(rel_vec)
+    dimensions = rel_vec.shape[-1]
+    r = xp.linalg.norm(rel_vec, axis=-1)
+    eye3 = _get_eye3(xp, dimensions)
 
     g_1 = G_1_function(r, wave_number)
-    der_g_0 = G_0_derivative_function(r, wave_number) * R_vec[coordinate] / r
-    der_g_1 = G_1_derivative_function(r, wave_number) * R_vec[coordinate] / r
-    R_cross = R_vec[:, None] @ R_vec[None, :]
-    der_R_cross = v_cross_derivative(R_vec, coordinate)
+    der_g_0 = G_0_derivative_function(r, wave_number) * rel_vec[..., coordinate] / r
+    der_g_1 = G_1_derivative_function(r, wave_number) * rel_vec[..., coordinate] / r
+    R_cross = rel_vec[..., :, None] * rel_vec[..., None, :]
+    der_R_cross = v_cross_derivative(rel_vec, coordinate)
+    dg_0_term = xp.asarray(der_g_0)[..., None, None] * eye3[None, :, :]
 
-    derivative_tensor = der_g_0 * xp.eye(dimensions) + der_g_1 * R_cross + g_1 * der_R_cross
+    derivative_tensor = dg_0_term + der_g_1[..., None, None] * R_cross + xp.asarray(g_1)[..., None, None] * der_R_cross[None, :, :]
     
     return derivative_tensor 
 
@@ -360,11 +366,10 @@ def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) 
     for i in range(num_particles):
         for j in range(i + 1, num_particles):
             for coord in range(dimensions):
-                green_tensor_derivative[i, j, coord, :, :] = pair_green_tensor_derivative(positions[i], positions[j], coord, wave_number)
+                green_tensor_derivative[i, j, coord, :, :] = pair_green_tensor_derivative(positions[i] - positions[j], coord, wave_number)
                 green_tensor_derivative[j, i, coord, :, :] = -green_tensor_derivative[i, j, coord, :, :]
     return green_tensor_derivative
  
-
 def scattering_term(rel_vecs : ArrayLike, wave_number : float, dipole_moments : ArrayLike) -> ArrayLike:
     """
     Compute the scattering term for the MSP without explicitly constructing the Green's tensor.
@@ -427,5 +432,112 @@ def scattering_term_batched(
         # Contract: (B,N,d,d) × (N,d) → (B,d)
         scattering_field[i0:i1] = scattering_contraction(rel_vec_block, dipole_moments, G_0_block, G_1_block, wave_number)
     return scattering_field
+
+def scattering_contraction_grad(rel_vecs: ArrayLike,
+                               dipole_moments: ArrayLike,
+                               G_0: ArrayLike,
+                               G_1: ArrayLike,
+                               dG_0: ArrayLike,
+                               dG_1: ArrayLike,
+                               wave_number: float) -> ArrayLike:
+    """
+    Computes the scattering field gradient by contracting the Green's function and its derivative with the dipole moments.
+
+    Parameters
+    ----------
+    rel_vecs : ArrayLike
+        Relative position vectors between particles, of shape (num_particles, num_particles, dimension).
+    dipole_moments : ArrayLike
+        Dipole moments of the particles, of shape (num_particles, dimension).
+    G_0 : ArrayLike
+        Precomputed G_0 values for the relative positions, of shape (num_particles, num_particles).
+    G_1 : ArrayLike
+        Precomputed G_1 values for the relative positions, of shape (num_particles, num_particles).
+    dG_0 : ArrayLike
+        Precomputed derivatives of G_0 values for the relative positions, of shape (num_particles, num_particles).
+    dG_1 : ArrayLike
+        Precomputed derivatives of G_1 values for the relative positions, of shape (num_particles, num_particles).
+    wave_number : float
+        Wave number.
+
+    Returns
+    -------
+    ArrayLike
+        The resulting field gradient after applying the Green's function and its derivative, of shape (num_particles, dimension, dimension).
+    """
+    xp = get_backend(rel_vecs)
+
+def scattering_term_grad(
+    rel_vecs: ArrayLike,
+    wave_number: float,
+    dipole_moments: ArrayLike
+):
+    """
+    Compute the scattering term gradient for the MSP without explicitly constructing the Green's tensor.
+
+    Parameters
+    ----------
+    rel_vecs :
+        Relative position vectors between particles.
+    wave_number :
+        Wave number of the incident wave.
+    dipole_moments :
+        Dipole moments of the particles.
+    
+    Returns
+    -------
+    xp.ndarray
+        The scattering term gradient for the MSP.
+    """
+    xp = get_backend(rel_vecs)
+    k2 = wave_number**2
+    
+    num_particles, dimensions = rel_vecs.shape[0], rel_vecs.shape[-1]
+    
+    # mask self-interactions
+    mask = ~xp.eye(num_particles, dtype=bool)
+    
+    scattering_field_grad = xp.zeros((num_particles, dimensions, dimensions), dtype=xp.complex128)
+    
+
+    for j in range(num_particles):
+            rel_vecs_j = rel_vecs[j][mask[j]]
+            dipoles_l = dipole_moments[mask[j]]
+            dG_blocks = xp.zeros((len(rel_vecs_j), dimensions, dimensions, dimensions), dtype=xp.complex128)
+            for c in range(dimensions):
+                dG_blocks[:, c, :, :] = pair_green_tensor_derivative(rel_vecs_j, c, wave_number)
+            scattering_field_grad[j] = xp.einsum('lcnm,lm->cn', dG_blocks, dipoles_l*k2)
+
+    return scattering_field_grad
+
+def scattering_term_grad_batched(
+    rel_vecs: ArrayLike,
+    wave_number: float,
+    dipole_moments: ArrayLike,
+    G_0: ArrayLike,
+    G_1: ArrayLike,
+    dG_0: ArrayLike,
+    dG_1: ArrayLike,
+    batch_size: int = 512
+):
+    xp = get_backend(rel_vecs)
+    N, d = rel_vecs.shape[0], rel_vecs.shape[-1]
+    k2 = wave_number**2
+
+    scattering_field_grad = xp.zeros((N, d, d), dtype=xp.complex128)
+
+    for i0 in range(0, N, batch_size):
+        i1 = min(i0 + batch_size, N)
+
+        # (B, 1, d) - (1, N, d) → (B, N, d)
+        rel_vec_block = rel_vecs[i0:i1,:,:]
+        G_0_block = G_0[i0:i1,:]
+        G_1_block = G_1[i0:i1,:]
+        dG_0_block = dG_0[i0:i1,:]
+        dG_1_block = dG_1[i0:i1,:]
+
+        # Contract: (B,N,d,d) × (N,d) → (B,d,d)
+        scattering_field_grad[i0:i1] = scattering_contraction_grad(rel_vec_block, dipole_moments, G_0_block, G_1_block, dG_0_block, dG_1_block, wave_number)
+    return scattering_field_grad
 
         
