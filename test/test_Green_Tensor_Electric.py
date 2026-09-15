@@ -13,7 +13,9 @@ from msptools.GreenTensor_Electric import (G_0_function,
                                            construct_green_tensor_gradient,
                                            pairwise_green_tensor,
                                             scattering_term,
-                                            scat_green_field_from_rel_vecs_dipoles, scattering_term_batched)
+                                            scat_green_field_from_rel_vecs_dipoles, scattering_term_batched,
+                                            scattering_term_grad
+)
 
 class Test_ConstructGreenTensor:
 
@@ -141,8 +143,7 @@ class Test_ApplyGreenTensor:
 
         assert scattering.shape == expected_scattering.shape, "Output shape mismatch between scat_green_field_from_rel_vecs_dipoles and scattering_term."
         assert np.allclose(scattering, expected_scattering), "Applying Green's tensor to dipoles does not match the expected scattering field computed from the full Green's tensor."
-        
-        
+               
 class Test_PairGreenTensor:
 
     wave_number = 2.0
@@ -226,7 +227,6 @@ class Test_PairGreenTensor:
 
         assert np.allclose(g_ij, g_nf, rtol=1e-5), "Pair Green's tensor does not match near-field approximation."
 
-
 class Test_Pair_GreenTensor_Derivative:
 
     wave_number = 2.0
@@ -234,10 +234,11 @@ class Test_Pair_GreenTensor_Derivative:
     def test_antisymmetry(self):
         pos_i = np.array([0, 0, 0])
         pos_j = np.array([1.5, 0, 0])
+        rel_vec = pos_i - pos_j
 
         for coord in range(3):
-            der_g_ij = pair_green_tensor_derivative(pos_i, pos_j, coord, self.wave_number)
-            der_g_ji = pair_green_tensor_derivative(pos_j, pos_i, coord, self.wave_number)
+            der_g_ij = pair_green_tensor_derivative(rel_vec, coord, self.wave_number)
+            der_g_ji = pair_green_tensor_derivative(-rel_vec, coord, self.wave_number)
 
             assert np.allclose(der_g_ij, -der_g_ji), f"Derivative of pair Green's tensor is not antisymmetric for coordinate {coord}."
     
@@ -245,9 +246,10 @@ class Test_Pair_GreenTensor_Derivative:
     def test_numerical_derivative(self, coordinate):
         pos_i = np.array([0.5, 0.5, 0.5])
         pos_j = np.array([1.5, 0, 0])
+        rel_vec = pos_i - pos_j
         h = 1e-8
 
-        der_g_analytical = pair_green_tensor_derivative(pos_i, pos_j, coordinate, self.wave_number)
+        der_g_analytical = pair_green_tensor_derivative(rel_vec, coordinate, self.wave_number)
 
         pos_i_plus = pos_i.copy()
         pos_i_plus[coordinate] += h
@@ -263,7 +265,6 @@ class Test_Pair_GreenTensor_Derivative:
         print(f"Numerical derivative (coord {coordinate}):\n", der_g_numerical)
 
         assert np.allclose(der_g_analytical, der_g_numerical, atol=1e-5), f"Analytical and numerical derivatives do not match for coordinate {coordinate}."
-
 
 class Test_ConstructGreenTensorGradient:
     
@@ -304,8 +305,7 @@ class Test_ScatteringTerm:
         scattering_field = scattering_term(rel_vecs, self.wave_number, dipole_moments)
         expected_scattering_field = np.zeros_like(scattering_field)
         assert np.allclose(scattering_field, expected_scattering_field), "Scattering term for a single particle should be zero."
-              
-        
+                    
 def test_scattering_matvec():
     N = 5
     d = 3
@@ -320,3 +320,26 @@ def test_scattering_matvec():
     S2 = scat_green_field_from_rel_vecs_dipoles(rel_vecs, p, wave_number)
 
     assert np.allclose(S1, S2, atol=1e-8)
+
+class Test_ScatteringTermGrad:
+    
+    wave_number = 2.0
+    
+    def test_consistency_with_green_tensor_gradient(self):
+        positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+        dipole_moments = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        rel_vecs = positions[:, None, :] - positions[None, :, :]
+        scattering_field_grad = scattering_term_grad(rel_vecs, self.wave_number, dipole_moments)
+        expected_scattering_field_grad = np.zeros_like(scattering_field_grad)
+        for j in range(positions.shape[0]):
+            for i in range(positions.shape[0]):
+                if i != j:
+                    for c in range(positions.shape[1]):
+                        
+                        print(f"Shape of dipole_moments[i] for i={i}: {dipole_moments[i].shape}")
+                        dG_ij = pair_green_tensor_derivative(rel_vecs[j][i], c, self.wave_number)
+                        
+                        print(f"Shape of dG_ij for j={j}, i={i}, c={c}: {dG_ij.shape}")
+                        expected_scattering_field_grad[j, c, :] += dG_ij[0, :, :] @ dipole_moments[i]*self.wave_number**2
+        assert np.allclose(scattering_field_grad, expected_scattering_field_grad), "Scattering term gradient does not match the expected values."
+

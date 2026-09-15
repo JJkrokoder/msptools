@@ -6,7 +6,8 @@ except ImportError:
 from msptools.MSP import *
 from msptools.dipole_moments import calculate_dipole_moments_linear
 from msptools.polarizability_mod import polarizability_to_matrix
-from msptools.GreenTensor_Electric import construct_green_tensor
+from msptools.GreenTensor_Electric import (construct_green_tensor,
+                                           construct_green_tensor_gradient)
 np.random.seed(42)
 np.set_printoptions(precision=3, suppress=True)
 
@@ -207,5 +208,35 @@ class Test_MSP_gradient_from_arrays:
         gradient = MSP_gradient_from_arrays(dipole_moments, external_gradient, self.wave_number, zero_green_tensor_derivative)
         
         assert np.allclose(gradient, external_gradient), "Gradient should equal external gradient when green tensor derivative is zero."
+
+class Test_MSP_gradient_from_positions:
+    
+    dimension = 3
+    wave_number = 1.0
+    
+    def test_zero_green_tensor_derivative(self):
+        num_particles = 2
+        external_gradient = np.random.rand(num_particles, self.dimension, self.dimension)
+        dipole_moments = np.random.rand(num_particles, self.dimension) + 1j * np.random.rand(num_particles, self.dimension)
+        positions = np.random.rand(num_particles, self.dimension)
+        positions[:, 0] = np.linspace(-1, 1, num_particles)*1e6
+        
+        gradient = MSP_gradient_from_positions(dipole_moments, external_gradient, self.wave_number, positions)
+        
+        assert gradient.shape == (num_particles, self.dimension, self.dimension), "Gradient shape is incorrect."
+
+    def test_consistency_with_arrays(self):
+        num_particles = 3
+        external_gradient = np.random.rand(num_particles, self.dimension, self.dimension)
+        dipole_moments = np.random.rand(num_particles, self.dimension) + 1j * np.random.rand(num_particles, self.dimension)
+        positions = np.random.rand(num_particles, self.dimension)
+        
+        
+        green_tensor_derivative = construct_green_tensor_gradient(positions, self.wave_number)
+        
+        gradient_from_arrays = MSP_gradient_from_arrays(dipole_moments, external_gradient, self.wave_number, green_tensor_derivative)
+        gradient_from_positions = MSP_gradient_from_positions(dipole_moments, external_gradient, self.wave_number, positions)
+        
+        assert np.allclose(gradient_from_arrays, gradient_from_positions), "Gradients from arrays and positions do not match."
     
     
