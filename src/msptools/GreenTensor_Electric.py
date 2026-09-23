@@ -206,19 +206,18 @@ def scat_green_field_from_rel_vecs_dipoles(rel_vecs: ArrayLike,
     r = xp.linalg.norm(rel_vecs, axis=-1)
 
     # scalars
-    G0 = G_0_function(r, k)
-    G1 = G_1_function(r, k)
+    G0_k2 = G_0_function(r, k)*k**2
+    G1_k2 = G_1_function(r, k)*k**2
 
     # direct contraction WITHOUT forming tensor
-    scattering_field = scattering_contraction(rel_vecs, p, G0, G1, k) 
+    scattering_field = scattering_contraction(rel_vecs, p, G0_k2, G1_k2) 
 
     return scattering_field
 
 def scattering_contraction(rel_vecs: ArrayLike, 
                           p: ArrayLike,
-                          G_0: ArrayLike,
-                          G_1: ArrayLike,
-                          k: float) -> ArrayLike:
+                          G_0_k2: ArrayLike,
+                          G_1_k2: ArrayLike) -> ArrayLike:
     """
     Computes the scattering field by contracting the Green's function with the dipole moments.
     
@@ -229,12 +228,10 @@ def scattering_contraction(rel_vecs: ArrayLike,
         Relative position vectors between particles, of shape (num_particles, num_particles, dimension).
     p :
         Dipole moments of the particles, of shape (num_particles, dimension).
-    G_0 :
+    G_0_k2 :
         Precomputed G_0 values for the relative positions, of shape (num_particles, num_particles).
-    G_1 :
+    G_1_k2 :
         Precomputed G_1 values for the relative positions, of shape (num_particles, num_particles).
-    k :
-        Wave number.
     
     Returns
     -------
@@ -243,10 +240,11 @@ def scattering_contraction(rel_vecs: ArrayLike,
     """
     
     xp = get_backend(rel_vecs)
-    rp = xp.einsum('ijd,jd->ij', rel_vecs, p)          # (N, N)
-    term1 = G_0[...,None] * p                   # isotropic part
-    term2 = G_1[...,None] * rel_vecs * rp[...,None]
-    scattering_field = xp.sum(k**2*(term1 + term2), axis=1)  # sum over source particles
+    #rp = xp.einsum('ijd,jd->ij', rel_vecs, p)          # (N, N)
+    rp = (rel_vecs * p[None, :, :]).sum(axis=-1)
+    term1 = G_0_k2[...,None] * p[None, :, :]                   # isotropic part
+    term2 = G_1_k2[...,None] * rel_vecs * rp[...,None]
+    scattering_field = xp.sum((term1 + term2), axis=1)  # sum over source particles
 
     return scattering_field
 
@@ -308,7 +306,7 @@ def pairwise_green_tensor(relative_positions : ArrayLike, wave_number: float) ->
         green_tensor = G_0_values[:, None, None] * Identity + G_1_values[:, None, None] * R_cross_values
     return green_tensor
 
-def pair_green_tensor_derivative(rel_vec: np.ndarray, coordinate : int,  wave_number: float):
+def pair_green_tensor_derivative(rel_vec: np.ndarray, wave_number: float):
     """
     Constructs the derivative of the pair Green's tensor with respect to a specific coordinate.
 
@@ -316,8 +314,6 @@ def pair_green_tensor_derivative(rel_vec: np.ndarray, coordinate : int,  wave_nu
     ----------
     rel_vec : np.ndarray
         Relative position vector between the two particles.
-    coordinate : int
-        The coordinate with respect to which the derivative is taken (0, 1, or 2).
     wave_number : float
         The wave number.
 
@@ -328,19 +324,31 @@ def pair_green_tensor_derivative(rel_vec: np.ndarray, coordinate : int,  wave_nu
     """
     xp = get_backend(rel_vec)
     dimensions = rel_vec.shape[-1]
-    r = xp.linalg.norm(rel_vec, axis=-1)
     eye3 = _get_eye3(xp, dimensions)
 
-    g_1 = G_1_function(r, wave_number)
-    der_g_0 = G_0_derivative_function(r, wave_number) * rel_vec[..., coordinate] / r
-    der_g_1 = G_1_derivative_function(r, wave_number) * rel_vec[..., coordinate] / r
-    R_cross = rel_vec[..., :, None] * rel_vec[..., None, :]
-    der_R_cross = v_cross_derivative(rel_vec, coordinate)
-    dg_0_term = xp.asarray(der_g_0)[..., None, None] * eye3[None, :, :]
+    r = xp.linalg.norm(rel_vec, axis=-1)              
+    g_1  = G_1_function(r, wave_number)                
+    dg0  = G_0_derivative_function(r, wave_number)      
+    dg1  = G_1_derivative_function(r, wave_number)      
 
-    derivative_tensor = dg_0_term + der_g_1[..., None, None] * R_cross + xp.asarray(g_1)[..., None, None] * der_R_cross[None, :, :]
-    
-    return derivative_tensor 
+    unit = rel_vec / r[..., None]                       # (...,3), all k at once
+
+    der_g0_full = dg0[..., None] * unit                 # (...,3)  [k]
+    der_g1_full = dg1[..., None] * unit                 # (...,3)  [k]
+
+    R_cross = rel_vec[..., :, None] * rel_vec[..., None, :]   # (...,3,3) [i,j]
+
+    # d/dx_k (x_i x_j) = delta_ki x_j + delta_kj x_i  -- no einsum/matmul needed
+    der_R_cross_full = (eye3[:, :, None] * rel_vec[..., None, None, :]
+                         + eye3[:, None, :] * rel_vec[..., None, :, None])   # [k,i,j]
+
+    dg_0_term = der_g0_full[..., :, None, None] * eye3[None, None, :, :]
+
+    derivative_tensor = (dg_0_term
+                          + der_g1_full[..., :, None, None] * R_cross[..., None, :, :]
+                          + xp.asarray(g_1)[..., None, None, None] * der_R_cross_full)
+
+    return derivative_tensor  # (..., 3, 3, 3): [k, i, j]
 
 def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) -> np.ndarray:
     """
@@ -365,9 +373,8 @@ def construct_green_tensor_gradient(positions : np.ndarray, wave_number: float) 
 
     for i in range(num_particles):
         for j in range(i + 1, num_particles):
-            for coord in range(dimensions):
-                green_tensor_derivative[i, j, coord, :, :] = pair_green_tensor_derivative(positions[i] - positions[j], coord, wave_number)
-                green_tensor_derivative[j, i, coord, :, :] = -green_tensor_derivative[i, j, coord, :, :]
+            green_tensor_derivative[i, j, :, :, :] = pair_green_tensor_derivative(positions[i] - positions[j], wave_number)
+            green_tensor_derivative[j, i, :, :, :] = -green_tensor_derivative[i, j, :, :, :]
     return green_tensor_derivative
  
 def scattering_term(rel_vecs : ArrayLike, wave_number : float, dipole_moments : ArrayLike) -> ArrayLike:
@@ -411,13 +418,35 @@ def scattering_term_batched(
     rel_vecs: ArrayLike,
     wave_number: float,
     dipole_moments: ArrayLike,
-    G_0: ArrayLike,
-    G_1: ArrayLike,
-    batch_size: int = 512
+    G_0_k2: ArrayLike,
+    G_1_k2: ArrayLike,
+    batch_size: int = 128
 ):
+    """
+    Compute the scattering term in batches.
+
+    Parameters
+    ----------
+    rel_vecs : ArrayLike
+        Relative position vectors between particles.
+    wave_number : float
+        Wave number of the incident wave.
+    dipole_moments : ArrayLike
+        Dipole moments of the particles.
+    G_0 : ArrayLike
+        Precomputed G_0 values for the relative positions.
+    G_1 : ArrayLike
+        Precomputed G_1 values for the relative positions.
+    batch_size : int, optional
+        The size of each batch.
+
+    Returns
+    -------
+    xp.ndarray
+        The scattering term for the MSP.
+    """
     xp = get_backend(rel_vecs)
     N, d = rel_vecs.shape[0], rel_vecs.shape[-1]
-    k2 = wave_number**2
 
     scattering_field = xp.zeros((N, d), dtype=xp.complex128)
 
@@ -426,11 +455,11 @@ def scattering_term_batched(
 
         # (B, 1, d) - (1, N, d) → (B, N, d)
         rel_vec_block = rel_vecs[i0:i1,:,:]
-        G_0_block = G_0[i0:i1,:]
-        G_1_block = G_1[i0:i1,:]
+        G_0_block = G_0_k2[i0:i1,:]
+        G_1_block = G_1_k2[i0:i1,:]
 
         # Contract: (B,N,d,d) × (N,d) → (B,d)
-        scattering_field[i0:i1] = scattering_contraction(rel_vec_block, dipole_moments, G_0_block, G_1_block, wave_number)
+        scattering_field[i0:i1] = scattering_contraction(rel_vec_block, dipole_moments, G_0_block, G_1_block)
     return scattering_field
 
 def scattering_contraction_grad(rel_vecs: ArrayLike,
@@ -504,8 +533,7 @@ def scattering_term_grad(
             rel_vecs_j = rel_vecs[j][mask[j]]
             dipoles_l = dipole_moments[mask[j]]
             dG_blocks = xp.zeros((len(rel_vecs_j), dimensions, dimensions, dimensions), dtype=xp.complex128)
-            for c in range(dimensions):
-                dG_blocks[:, c, :, :] = pair_green_tensor_derivative(rel_vecs_j, c, wave_number)
+            dG_blocks = pair_green_tensor_derivative(rel_vecs_j, wave_number)
             scattering_field_grad[j] = xp.einsum('lcnm,lm->cn', dG_blocks, dipoles_l*k2)
 
     return scattering_field_grad
@@ -514,30 +542,41 @@ def scattering_term_grad_batched(
     rel_vecs: ArrayLike,
     wave_number: float,
     dipole_moments: ArrayLike,
-    G_0: ArrayLike,
-    G_1: ArrayLike,
-    dG_0: ArrayLike,
-    dG_1: ArrayLike,
-    batch_size: int = 512
+    block_size: int = 128
 ):
+    """
+    Compute the scattering term gradient for the MSP without explicitly
+    constructing the full N x N Green's tensor, processing particles in
+    blocks to bound peak memory while avoiding a fully per-particle loop.
+    """
     xp = get_backend(rel_vecs)
-    N, d = rel_vecs.shape[0], rel_vecs.shape[-1]
     k2 = wave_number**2
+    num_particles, dimensions = rel_vecs.shape[0], rel_vecs.shape[-1]
 
-    scattering_field_grad = xp.zeros((N, d, d), dtype=xp.complex128)
+    scattering_field_grad = xp.zeros((num_particles, dimensions, dimensions), dtype=xp.complex128)
+    dipoles_scaled = dipole_moments * k2
 
-    for i0 in range(0, N, batch_size):
-        i1 = min(i0 + batch_size, N)
+    for start in range(0, num_particles, block_size):
+        end = min(start + block_size, num_particles)
+        block = rel_vecs[start:end]                      # (B, N, 3)
 
-        # (B, 1, d) - (1, N, d) → (B, N, d)
-        rel_vec_block = rel_vecs[i0:i1,:,:]
-        G_0_block = G_0[i0:i1,:]
-        G_1_block = G_1[i0:i1,:]
-        dG_0_block = dG_0[i0:i1,:]
-        dG_1_block = dG_1[i0:i1,:]
+        # mask self-interactions within this block
+        rows = xp.arange(start, end)[:, None]
+        cols = xp.arange(num_particles)[None, :]
+        mask = rows != cols                                # (B, N)
 
-        # Contract: (B,N,d,d) × (N,d) → (B,d,d)
-        scattering_field_grad[i0:i1] = scattering_contraction_grad(rel_vec_block, dipole_moments, G_0_block, G_1_block, dG_0_block, dG_1_block, wave_number)
+        # avoid 0/0 at r=0 on the (now masked-off) diagonal entries
+        block_safe = block.copy()
+        diag_local = ~mask
+        block_safe[diag_local] = 1.0
+
+        dG_blocks = pair_green_tensor_derivative(block_safe, wave_number)  # (B, N, 3, 3, 3)
+        dG_blocks[diag_local] = 0.0
+
+        scattering_field_grad[start:end] = xp.einsum(
+            'jlcnm,lm->jcn', dG_blocks, dipoles_scaled
+        )
+
     return scattering_field_grad
 
         
