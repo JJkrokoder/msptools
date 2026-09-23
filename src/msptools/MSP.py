@@ -10,7 +10,7 @@ from msptools.GreenTensor_Electric import (construct_green_tensor,
                                            scattering_term,
                                            scattering_term_batched,
                                            scat_green_field_from_rel_vecs_dipoles,
-                                           scattering_term_grad
+                                           scattering_term_grad, scattering_term_grad_batched
                                            )
 
 def solve_MSP(polarizability : ArrayLike,
@@ -110,8 +110,8 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
     size = num_particles * dimensions
     rel_vecs = positions[:, None, :] - positions[None, :, :]
     distances = xp.linalg.norm(rel_vecs, axis=-1)
-    G_0 = G_0_function(distances, wave_number)
-    G_1 = G_1_function(distances, wave_number)
+    G_0_k2 = G_0_function(distances, wave_number)*wave_number**2
+    G_1_k2 = G_1_function(distances, wave_number)*wave_number**2
     E_0_flat = external_field.flatten()
     
     def matvec(E_flat):
@@ -120,8 +120,8 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
         S = scattering_term_batched(rel_vecs=rel_vecs,
                                     wave_number=wave_number,
                                     dipole_moments=dipole_moments,
-                                    G_0=G_0,
-                                    G_1=G_1)
+                                    G_0_k2=G_0_k2,
+                                    G_1_k2=G_1_k2)
         return (E - S).flatten()
       
     A = LinearOperator(shape = (size, size), 
@@ -132,7 +132,7 @@ def solve_MSP_wo_green_GMRES(polarizability : ArrayLike,
                                 x0 = E_0_flat, 
                                 rtol=tolerance, 
                                 maxiter=maxiter,
-                                restart=20)
+                                restart=80)
     if info != 0:
         print(f"Warning: GMRES did not converge within {maxiter} iterations. Info: {info}")
     return solution_flat.reshape(num_particles, dimensions)
@@ -338,7 +338,7 @@ def MSP_gradient_from_positions(dipole_moments: ArrayLike,
     The gradient is returned as an array of shape (N, d, d) where N is the number of particles and d is the dimensionality.
     """
     R_vec = positions[:, None, :] - positions[None, :, :] # shape (N, N, d)
-    scattered_gradient = scattering_term_grad(rel_vecs=R_vec, wave_number=wave_number, dipole_moments=dipole_moments)
+    scattered_gradient = scattering_term_grad_batched(rel_vecs=R_vec, wave_number=wave_number, dipole_moments=dipole_moments)
 
     MSP_gradient = external_gradient + scattered_gradient
     return MSP_gradient
